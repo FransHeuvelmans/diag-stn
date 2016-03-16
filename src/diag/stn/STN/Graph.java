@@ -29,8 +29,8 @@ public class Graph
 {
     private LinkedHashSet<Vertex> nodes;
     private LinkedHashSet<DEdge> edges;
-    private Map<Vertex, LinkedHashSet<DEdge>> map = new HashMap();
-    private int vertexIds = 0;
+    private Map<Vertex, LinkedHashSet<DEdge>> map = new HashMap(); 
+    // Extra map with all the edges from a Vertex
     
     public Graph()
     {
@@ -60,9 +60,9 @@ public class Graph
         adjacent.add(e);
     }
     
-    public void addVertex(String name)
+    public void addVertex(int id, String name)
     {
-        Vertex v = new Vertex(++vertexIds, name);
+        Vertex v = new Vertex(id, name);
         nodes.add(v);
     }
     
@@ -77,6 +77,11 @@ public class Graph
         return adjacent;
     }
     
+    public LinkedHashSet<DEdge> possibleEdges(Vertex v)
+    {
+        return map.get(v);
+    }
+    
     public boolean directReach(Vertex fro, Vertex to)
     {
         Set<DEdge> edges = map.get(fro);
@@ -89,5 +94,32 @@ public class Graph
                 return true;
         }
         return false;
+    }
+    
+    /**
+     * Returns first Vertex with a certain name
+     * @param name
+     * @return the Vertex OR null !
+     */
+    public Vertex getVertex(String name)
+    {
+        for(Vertex v : nodes)
+        {
+            if(v.getName().equals(name))
+                return v;
+        }
+        System.err.println("Vertex not found, name: " + name);
+        return null;
+    }
+    
+    public Vertex getVertex(int id)
+    {
+        for(Vertex v : nodes)
+        {
+            if(v.getID() == id)
+                return v;
+        }
+        System.err.println("Vertex not found, id: " + id);
+        return null;
     }
 }
