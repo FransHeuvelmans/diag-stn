@@ -55,6 +55,11 @@ public class GraphPath
         return vertices.get(vertices.size()-1);
     }
     
+    public int stepSize()
+    {
+        return vertices.size();
+    }
+    
     public void removeLast()
     {
         vertices.remove(vertices.size() - 1);
@@ -73,6 +78,10 @@ public class GraphPath
         {
             newGP.addStep(getStepE(i), getStepV(i));
         }
+        /**
+         * Do not (deep) copy the edges and vertices because they need 
+         * to reference the right/same objects
+         */
         return newGP;
     }
     
@@ -81,7 +90,7 @@ public class GraphPath
         System.out.print(vertices.get(0).getName());
         for(int i = 1; i < vertices.size(); i++)
         {
-            System.out.print(" -> " + vertices.get(0).getName());
+            System.out.print(" -> " + vertices.get(i).getName());
         }
         System.out.print("\n");
     }

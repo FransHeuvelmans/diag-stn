@@ -1,0 +1,213 @@
+/*
+ * Copyright 2016 frans.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package diag.stn;
+
+import diag.stn.STN.*;
+import  java.lang.Math;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+
+/**
+ *
+ * @author frans
+ */
+public class Analyst
+{
+    private Graph graph;
+    private ArrayList<Observation> observations;
+    private Map<Vertex, Integer> fixedTimes; // add a 0/time point to any vertex
+    private Map<Observation, LinkedHashSet<GraphPath>> obsPaths;
+    
+    private Map<GraphPath, int[]> diffStore; // Just 4 testing/debugging the propagated diffs.
+    
+    // Each observation might have multiple paths connected
+    
+    public Analyst(Graph g)
+    {
+        observations = new ArrayList<>();
+        fixedTimes = new HashMap<>();
+        obsPaths = new HashMap<>(); 
+        diffStore = new HashMap<>(); 
+        graph = g;
+    }
+    
+    public void addObservation(Observation ob)
+    {
+        observations.add(ob);
+    }
+    
+    public void addFixedTime(Vertex v, int i)
+    {
+        if(fixedTimes.containsKey(v))
+        {
+            System.err.println("Tried to add a fixed time point to a vertex that has one");
+            return;
+        }
+        fixedTimes.put(v, i);
+    }
+    
+    public void generatePaths()
+    {
+        // given the observations, what paths must be checked ?
+        // puts them in a map ! -> see simplePaths
+        
+        for(Observation ob : observations)
+        {
+            GraphPath g = new GraphPath(ob.startV);
+            simplePaths(g, ob);
+        }
+    }
+    
+    public void propagateWeights()
+    {
+        // For now first use the stored paths and calculate ALL paths
+        int lb, ub, deltalb, deltaub, changelb, changeub;
+        Integer strtVal;
+        
+        for(Observation o: observations)
+        {
+            LinkedHashSet<GraphPath> paths = obsPaths.get(o);
+            int[] checkBounds = null;
+            if(paths != null)   // only if there are paths
+            {
+                for(GraphPath p : paths)  // lets do each path separate for now
+                {
+                    // First see if there is some fixedTime for the starting vertex
+                    strtVal = fixedTimes.get(o.startV); // lets hope that o.startV == p.getStepV(0)
+                    if(strtVal != null)
+                    {
+                        lb = (int) strtVal;
+                        ub = (int) strtVal;
+                    }
+                    else    // 0 point!
+                    {
+                        lb = 0;
+                        ub = 0;
+                    }
+                    for(int i=1; i < p.stepSize(); i++)
+                    {
+                        DEdge de = p.getStepE(i);
+                        lb += de.getLowerb();
+                        ub += de.getUpperb();
+                    }
+                    deltalb = o.endLb - lb; // lets keep this order and use no abs!
+                    deltaub = o.endUb - ub;
+                    
+                    changelb = Math.min(deltalb, deltaub);
+                    changeub = Math.max(deltalb, deltaub);
+                    int[] chng = new int[2]; //test & check code
+                    chng[0] = changelb;
+                    chng[1] = changeub;
+                    
+                    if(checkBounds != null)
+                    {
+                        if((checkBounds[0] != chng[0])||checkBounds[1] != chng[1])
+                            System.err.println("Inconsistent path found!");
+                    }
+                    else
+                    {
+                        checkBounds = new int[2];
+                        checkBounds[0] = chng[0];
+                        checkBounds[1] = chng[1];
+                    }
+                    diffStore.put(p, chng);
+                    
+                    for(int j=1; j < p.stepSize(); j++)
+                    {
+                        DEdge de = p.getStepE(j);
+                        de.addPossibleChange(changelb, changeub); 
+                        // store the possible changes
+                    }
+                }
+            }
+        }
+    }
+    
+    public void printPaths()
+    {
+        for(Observation o: observations)
+        {
+            System.out.print("Observation: " + o.startV.getName() + " to "
+                        + o.endV.getName()+ "\n\n");
+            if(obsPaths.containsKey(o))
+            {
+                LinkedHashSet<GraphPath> paths = obsPaths.get(o);
+                if(!paths.isEmpty())
+                {
+                    for(GraphPath p : paths)
+                    {
+                        p.simplePrint();
+                    }
+                }
+            }
+        }
+    }
+    
+    public void printWeights(Observation o)
+    {
+        if(obsPaths.containsKey(o))
+        {
+            LinkedHashSet<GraphPath> paths = obsPaths.get(o);
+            for(GraphPath p: paths)
+            {
+                System.out.print("Path: " + p.getStepV(0).getName() + " to "
+                        + p.getLastV().getName() + "\n\n");
+                if(diffStore.containsKey(p))
+                {
+                    int[] bounds = diffStore.get(p);
+                    System.out.println("Diff lb:" + bounds[0] + " ub:" + bounds[1]);
+                }
+            }
+        }
+    }
+    
+    private void simplePaths(GraphPath graphPath, Observation obs)
+    {
+        // need to create new set for each new observation!
+        LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(graphPath.getLastV());
+        if(edgeExp == null)
+            return; // dead end!
+        for(DEdge de : edgeExp)
+        {
+            if(de.getEnd().equals(obs.endV)) // end of edge equals end of observation ie. path is correct!
+            {
+                graphPath.addStep(de, de.getEnd());
+                // SAVE
+                LinkedHashSet<GraphPath> paths = obsPaths.get(obs.startV);
+                if(paths == null) 
+                {
+                    paths = new LinkedHashSet();
+                    obsPaths.put(obs, paths);
+                }
+                paths.add(graphPath.copy()); // save A COPY!
+                
+                graphPath.removeLast();
+            }
+            else if(!graphPath.edgeUsed(de))
+            {
+                graphPath.addStep(de, de.getEnd());
+                simplePaths(graphPath, obs);
+                graphPath.removeLast();
+            }
+        }
+    }
+    
+    /**
+     * Either point has a fixed time or assume first Vertex is 0
+     */
+}

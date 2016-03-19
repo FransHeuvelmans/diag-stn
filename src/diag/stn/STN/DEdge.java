@@ -24,7 +24,7 @@ import java.util.ArrayList;
 public class DEdge
 {
     private Vertex start, end;
-    int plowerbound, pupperbound; // predicted lower + upper
+    private int plowerbound, pupperbound; // predicted lower + upper
     private ArrayList<int[]> posChanges; // only use int[2] for lb/ub change
     
     public DEdge(Vertex s, Vertex e)
@@ -49,6 +49,11 @@ public class DEdge
         posCha[0] = lowerboundChange; // for now assume that both can be pos/neg
         posCha[1] = upperboundChange; // and no checks !
         posChanges.add(posCha);
+    }
+    
+    public ArrayList<int[]> getPossibleChanges()
+    {
+        return posChanges; // Dirty for now but separate STN from diagnosis!
     }
     
     public void setLowerb(int lb)

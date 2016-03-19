@@ -60,9 +60,8 @@ public class Graph
         adjacent.add(e);
     }
     
-    public void addVertex(int id, String name)
+    public void addVertex(Vertex v)
     {
-        Vertex v = new Vertex(id, name);
         nodes.add(v);
     }
     
@@ -79,7 +78,7 @@ public class Graph
     
     public LinkedHashSet<DEdge> possibleEdges(Vertex v)
     {
-        return map.get(v);
+        return map.get(v); // warning, can return null!
     }
     
     public boolean directReach(Vertex fro, Vertex to)
