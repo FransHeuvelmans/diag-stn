@@ -18,8 +18,10 @@ package diag.stn;
 import diag.stn.STN.*;
 import  java.lang.Math;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.Map;
 
 /**
@@ -32,8 +34,10 @@ public class Analyst
     private ArrayList<Observation> observations;
     private Map<Vertex, Integer> fixedTimes; // add a 0/time point to any vertex
     private Map<Observation, LinkedHashSet<GraphPath>> obsPaths;
+    private ArrayList<Diagnosis> diagnosisList;
     
     private Map<GraphPath, int[]> diffStore; // Just 4 testing/debugging the propagated diffs.
+    
     
     // Each observation might have multiple paths connected
     
@@ -43,6 +47,7 @@ public class Analyst
         fixedTimes = new HashMap<>();
         obsPaths = new HashMap<>(); 
         diffStore = new HashMap<>(); 
+        diagnosisList = new ArrayList<>();
         graph = g;
     }
     
@@ -126,6 +131,10 @@ public class Analyst
                         checkBounds[1] = chng[1];
                     }
                     diffStore.put(p, chng);
+                    if((chng[0] == 0)&&(chng[1] == 0))
+                        o.fixneeded = false; //quickNdirty
+                    else
+                        o.fixneeded = true;
                     
                     for(int j=1; j < p.stepSize(); j++)
                     {
@@ -133,6 +142,70 @@ public class Analyst
                         de.addPossibleChange(changelb, changeub); 
                         // store the possible changes
                     }
+                }
+            }
+        }
+    }
+    
+    public Diagnosis[] generateDiagnosis()
+    {
+        Deque<GraphPath> needDiag = new LinkedList<>();
+        for(Observation ob: observations)
+        {
+            // if observation is wrong....
+            // ie if difference is 0 ????
+            if(ob.fixneeded)
+            {
+                LinkedHashSet<GraphPath> pathSet = obsPaths.get(ob);
+                for(GraphPath p : pathSet)
+                    needDiag.add(p);    // faster way to copy?
+            }
+        }
+        /**
+         * CHECK: if no fix is needed the values shouldnt be allowed to change!!
+         * Is it caught with the [0,0] bounds added to the edges of that observ.?
+         */
+        generateDiagnosis(new Diagnosis(), needDiag, new ArrayList<>());
+        return diagnosisList.toArray(new Diagnosis[diagnosisList.size()]);
+    }
+    
+    private void generateDiagnosis(Diagnosis diag, Deque<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
+    {
+        if(wronglyPredicted.isEmpty())
+            return;
+        GraphPath path = wronglyPredicted.pop();    
+        testedPaths.add(path);
+        if(!diag.edgeUsed(path))
+        {
+            for(int i = 1; i < path.stepSize(); i++)
+            {
+                DEdge edge = path.getStepE(i);  // for EACH edge on this path!
+                // if combine possible
+                boolean combine = true;
+                ArrayList<int[]> changes = edge.getPossibleChanges();
+                int[] finalchng = changes.remove(changes.size());
+                for(int[] bounds : changes)
+                {
+                    if((bounds[0] > finalchng[1])||(bounds[1] < finalchng[0]))
+                    {
+                        combine = false;
+                        break;
+                    }
+                    else
+                    {
+                        if(bounds[0] > finalchng[0])
+                            finalchng[0] = bounds[0];
+                        if(bounds[1] < finalchng[1])
+                            finalchng[1] = bounds[1];
+                    }
+                }
+                if(combine)
+                {
+                    diag.addPartial(edge, finalchng[0], finalchng[1]);
+                    if(wronglyPredicted.isEmpty())
+                        diagnosisList.add(diag);
+                    else
+                        generateDiagnosis(diag, wronglyPredicted, testedPaths);
                 }
             }
         }

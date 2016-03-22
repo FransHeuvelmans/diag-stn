@@ -15,6 +15,11 @@
  */
 package diag.stn;
 
+import diag.stn.STN.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Can contain a full or partial diagnosis of the model.
  * Is usually build by some analyst
@@ -22,5 +27,37 @@ package diag.stn;
  */
 public class Diagnosis
 {
+    ArrayList<DEdge> edges;
+    Map<DEdge, int[]> changes;
     
+    public Diagnosis()
+    {
+        edges = new ArrayList<>();
+        changes = new HashMap<>();
+    }
+    
+    public void addPartial(DEdge edge, int lowerbound, int upperbound)
+    {
+        int[] bound = new int[2];
+        bound[0] = lowerbound;
+        bound[1] = upperbound;
+        edges.add(edge);
+        changes.put(edge, bound);
+    }
+    
+    public boolean edgeUsed(DEdge edge)
+    {
+        return edges.contains(edge);
+    }
+    
+    public boolean edgeUsed(GraphPath path)
+    {
+        boolean used = false;
+        for(int i = 1; i < path.stepSize(); i++)
+        {
+            if(edges.contains(path.getStepE(i)))
+                return true;
+        }
+        return false;
+    }
 }

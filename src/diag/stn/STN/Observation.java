@@ -25,6 +25,7 @@ public class Observation
     public Vertex startV;
     public Vertex endV;
     public int endLb, endUb; // time
+    public boolean fixneeded;
     
     
     public Observation(Vertex sV, Vertex eV, int lb, int ub)
