@@ -53,7 +53,15 @@ public class DEdge
     
     public ArrayList<int[]> getPossibleChanges()
     {
-        return posChanges; // Dirty for now but separate STN from diagnosis!
+        ArrayList<int[]> changesPos = new ArrayList<>(posChanges.size());
+        for(int[] chng: posChanges)
+        {
+            int[] x = new int[2];
+            x[0] = chng[0];
+            x[1] = chng[1];
+            changesPos.add(x);
+        }
+        return changesPos; // Dirty for now but separate STN from diagnosis!
     }
     
     public void setLowerb(int lb)

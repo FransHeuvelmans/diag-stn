@@ -78,6 +78,10 @@ public class DiagSTN
         analyst.printWeights(ob1);
         
         analyst.printWeights(ob2);
+        
+        analyst.generateDiagnosis();
+        
+        analyst.printDiagnosis();
     }
 
     /**

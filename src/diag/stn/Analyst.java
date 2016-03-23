@@ -149,7 +149,7 @@ public class Analyst
     
     public Diagnosis[] generateDiagnosis()
     {
-        Deque<GraphPath> needDiag = new LinkedList<>();
+        LinkedList<GraphPath> needDiag = new LinkedList<>();
         for(Observation ob: observations)
         {
             // if observation is wrong....
@@ -169,21 +169,39 @@ public class Analyst
         return diagnosisList.toArray(new Diagnosis[diagnosisList.size()]);
     }
     
-    private void generateDiagnosis(Diagnosis diag, Deque<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
+    private void generateDiagnosis(Diagnosis diagOriginal, LinkedList<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
     {
         if(wronglyPredicted.isEmpty())
             return;
         GraphPath path = wronglyPredicted.pop();    
         testedPaths.add(path);
-        if(!diag.edgeUsed(path))
-        {
+        if(!diagOriginal.edgeUsed(path)) // if path is not solved try to solve it
+        {                               
             for(int i = 1; i < path.stepSize(); i++)
-            {
+            { 
                 DEdge edge = path.getStepE(i);  // for EACH edge on this path!
+                Diagnosis diag = diagOriginal.copy(); // new Diagnosis
+
+                //check if edge is part of any of the testedPaths, if so 
+                // it can't be used
+                boolean alreadyUsed = false;
+                if(!testedPaths.isEmpty())
+                {
+                    for(int j = 0; j < testedPaths.size()-1;j++) // shouldnt check the last added Path (ie. the current Path!!)
+                    {
+                        GraphPath p = testedPaths.get(j);
+                        if(p.edgeUsed(edge))
+                            alreadyUsed = true; // can't use this edge in current diagnosis 
+                    }                           // already part of solved path
+                }
+                if(alreadyUsed)
+                {
+                    continue;
+                }
                 // if combine possible
                 boolean combine = true;
                 ArrayList<int[]> changes = edge.getPossibleChanges();
-                int[] finalchng = changes.remove(changes.size());
+                int[] finalchng = changes.remove(changes.size()-1); // lets start with the last added bounds
                 for(int[] bounds : changes)
                 {
                     if((bounds[0] > finalchng[1])||(bounds[1] < finalchng[0]))
@@ -205,14 +223,39 @@ public class Analyst
                     if(wronglyPredicted.isEmpty())
                         diagnosisList.add(diag);
                     else
-                        generateDiagnosis(diag, wronglyPredicted, testedPaths);
+                    {
+                        LinkedList<GraphPath> newWP = new LinkedList<>();
+                        for(GraphPath gp: wronglyPredicted)
+                            newWP.add(gp);
+                        ArrayList<GraphPath> newTP = new ArrayList<>();
+                        for(GraphPath g : testedPaths)
+                            newTP.add(g);
+                        generateDiagnosis(diag, newWP, newTP);
+                    }
                 }
+            }
+        }
+        else // apperently path was already solved
+        {   // continue as if it was solved
+            if(wronglyPredicted.isEmpty())
+                        diagnosisList.add(diagOriginal.copy());
+            else
+            {
+                LinkedList<GraphPath> newWP = new LinkedList<>();
+                for(GraphPath gp: wronglyPredicted)
+                    newWP.add(gp);
+                ArrayList<GraphPath> newTP = new ArrayList<>();
+                for(GraphPath g : testedPaths)
+                    newTP.add(g);
+                generateDiagnosis(diagOriginal.copy(), newWP, newTP);
             }
         }
     }
     
     public void printPaths()
     {
+        System.out.println("=== Path overview ===");
+        
         for(Observation o: observations)
         {
             System.out.print("Observation: " + o.startV.getName() + " to "
@@ -233,6 +276,7 @@ public class Analyst
     
     public void printWeights(Observation o)
     {
+        System.out.println("=== Observation per path differences ===");
         if(obsPaths.containsKey(o))
         {
             LinkedHashSet<GraphPath> paths = obsPaths.get(o);
@@ -246,6 +290,18 @@ public class Analyst
                     System.out.println("Diff lb:" + bounds[0] + " ub:" + bounds[1]);
                 }
             }
+        }
+    }
+    
+    public void printDiagnosis()
+    {
+        int iter = 1;
+        System.out.println("=== Diagnosis overview ===");
+        for(Diagnosis d : diagnosisList)
+        {
+            System.out.println("Diagnosis: " + iter);
+            d.printDiagnosis();
+            iter++;
         }
     }
     

@@ -27,8 +27,8 @@ import java.util.Map;
  */
 public class Diagnosis
 {
-    ArrayList<DEdge> edges;
-    Map<DEdge, int[]> changes;
+    private ArrayList<DEdge> edges;
+    private Map<DEdge, int[]> changes;
     
     public Diagnosis()
     {
@@ -59,5 +59,28 @@ public class Diagnosis
                 return true;
         }
         return false;
+    }
+    
+    public void printDiagnosis()
+    {
+        System.out.print("Delta = {");
+        for(DEdge de: edges)
+        {
+            System.out.print("d" + de.getStart().getName() + "," + de.getEnd().getName());
+            int[] chngs = changes.get(de);
+            System.out.print(" \u2208 [" + chngs[0] + "," + chngs[1] + "] ");
+        }
+        System.out.print("d-rest = [0,0]}\n");
+    }
+    
+    public Diagnosis copy()
+    {
+        Diagnosis cpy = new Diagnosis();
+        for(DEdge d: edges)
+        {
+            int[] chngs = changes.get(d);
+            cpy.addPartial(d, chngs[0], chngs[1]);
+        }
+        return cpy;
     }
 }
