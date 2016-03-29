@@ -1,0 +1,62 @@
+# sample yaml description of Graph
+
+# First an overview of all the vertices used (loads in id, so check that !)
+# note that the names need to be strings
+vertices:
+    -   name: '0'
+        id: 0
+    -   name: '1'
+        id: 1
+    -   name: '2'
+        id: 2
+    -   name: '3'
+        id: 3
+    -   name: '4'
+        id: 4
+    -   name: '5'
+        id: 5
+    -   name: '6'
+        id: 6
+
+# Next are the edges for the graph connecting the vertices with added bounds
+# uses the id of the start and end nodes!
+edges:
+    -   start: 0
+        end: 1
+        lb: 10
+        ub: 15
+    -   start: 1
+        end: 2
+        lb: 14
+        ub: 23
+    -   start: 2
+        end: 3
+        lb: 6
+        ub: 12
+    -   start: 2
+        end: 4
+        lb: 13
+        ub: 999
+    -   start: 3
+        end: 5
+        lb: 25
+        ub: 33
+    -   start: 4
+        end: 6
+        lb: 10
+        ub: 15
+
+# Finally an _optional_ block for Observations
+# (For now always use it because after the yaml is given by commandline it is processed immideately)
+# Again uses the id for start and end nodes!
+observations:
+    -   start: 0
+        end: 5
+        lb: 85
+        ub: 100
+    -   start: 0
+        end: 6
+        lb: 66
+        ub: 80
+
+# TODO: Add fixed times and other options!

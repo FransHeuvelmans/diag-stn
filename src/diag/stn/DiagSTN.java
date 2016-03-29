@@ -17,6 +17,14 @@ package diag.stn;
 
 import diag.stn.STN.*;
 
+// IO imports
+import java.io.*;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.yaml.snakeyaml.*;
+
 /**
  *
  * @author frans
@@ -29,7 +37,69 @@ public class DiagSTN
      */
     public static void main(String[] args)
     {
-        testCase1();
+        if(args.length > 0)
+        {
+            readAndProcess(args[0]);
+            return;
+        }
+        // testCase1();
+        
+        readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/testSerialization.yml");
+    }
+    
+    public static void readAndProcess(String file)
+    {
+        try
+        {
+            InputStream input = new FileInputStream(new File(file));
+            Yaml yaml = new Yaml();
+            Map<String, Object> fileMap = (Map<String, Object>) yaml.load(input);
+            
+            Graph graph = new Graph();
+            
+            List<Object> vertices = (List) fileMap.get("vertices");
+            for(Object x: vertices)
+            {
+                Map<String, Object> vertexMap = (Map) x;
+                Vertex v = new Vertex((int)vertexMap.get("id"),(String)vertexMap.get("name"));
+                graph.addVertex(v);
+            }
+            
+            List<Object> edges = (List) fileMap.get("edges");
+            for(Object y: edges)
+            {
+                Map<String, Object> edgeMap = (Map) y;
+                int startId = (int) edgeMap.get("start");
+                int endId = (int) edgeMap.get("end");
+                Vertex start = graph.getVertex(startId);
+                Vertex end = graph.getVertex(endId);
+                graph.addEdge(start, end, (int)edgeMap.get("lb"), (int)edgeMap.get("ub"));
+            }
+            
+            Analyst analyst = new Analyst(graph);
+            List<Object> observations = (List) fileMap.get("observations");
+            for(Object z: observations)
+            {
+                Map<String, Object> obsMap = (Map) z;
+                int startId = (int) obsMap.get("start");
+                int endId = (int) obsMap.get("end");
+                Vertex start = graph.getVertex(startId);
+                Vertex end = graph.getVertex(endId);
+                Observation o = new Observation(start,end,(int) obsMap.get("lb"),(int) obsMap.get("end"));
+                analyst.addObservation(o);
+            }
+            
+            analyst.generatePaths();
+            analyst.propagateWeights();
+            analyst.generateDiagnosis();
+            analyst.printDiagnosis();
+            
+        } catch (FileNotFoundException ex)
+        {
+            System.err.println("File does not exist");
+            Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
     }
     
     public static void testCase1()
