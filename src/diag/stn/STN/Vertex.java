@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 frans.
+ * Copyright 2016 Frans van den Heuvel.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,57 @@
 package diag.stn.STN;
 
 /**
- *
- * @author frans
+ * A single point in a Graph as object.
+ * @author Frans van den Heuvel
  */
 public class Vertex
 {
     private String name;
     private int id;
     
+    /**
+     * Create Vertex with a certain id. Uses id as temporary name.
+     * @param ident integer with identity
+     */
     public Vertex(int ident)
     {
         id = ident;
+        name = "" + id;
     }
     
+    /**
+     * Create a Vertex with certain id and name.
+     * @param ident integer with identity
+     * @param n String with the name
+     */
     public Vertex(int ident, String n)
     {
         id = ident;
         name = n;
     }
     
+    /**
+     * Changes the name of the Vertex
+     * @param n String with the name
+     */
     public void setName(String n)
     {
         name = n;
     }
     
+    /**
+     * The name of the current vertex (if there is one)
+     * @return String with name
+     */
     public String getName()
     {
         return name;
     }
     
+    /**
+     * Return the id of the Vertex. Should be unique and can not be changed.
+     * @return integer with identity
+     */
     public int getID()
     {
         return id;

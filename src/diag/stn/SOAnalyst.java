@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Frans van den Heuvel.
+ * Copyright 2016 frans.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,20 @@
 package diag.stn;
 
 import diag.stn.STN.*;
-import  java.lang.Math;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
 
 /**
- * The analyst checks a model and diagnoses the possible problems in the model.
- * The model is represented by a directed graph
- * @author Frans van den Heuvel
+ * Single Origin Analyst. An analyst that computes the diagnosis faster by
+ * using the property of a system that there is only a single (starting) point
+ * from which the observations are made. (Examples include when using a clock
+ * to sync all observations)
+ * @author frans
  */
-public class Analyst
+public class SOAnalyst
 {
     private Graph graph;
     private ArrayList<Observation> observations;
@@ -37,16 +37,9 @@ public class Analyst
     private Map<Observation, LinkedHashSet<GraphPath>> obsPaths;
     private ArrayList<Diagnosis> diagnosisList;
     
-    private Map<GraphPath, int[]> diffStore; // Just 4 testing/debugging the propagated diffs.
+    private Map<GraphPath, int[]> diffStore;
     
-    
-    // Each observation might have multiple paths connected
-    
-    /**
-     * Creates a new analyst for a given Graph.
-     * @param g preferably instantiated Graph object that needs to be analyzed
-     */
-    public Analyst(Graph g)
+    public SOAnalyst(Graph g)
     {
         observations = new ArrayList<>();
         fixedTimes = new HashMap<>();
@@ -56,21 +49,20 @@ public class Analyst
         graph = g;
     }
     
-    /**
-     * Adds an observation that needs to be tested and is possibly used to create
-     * a diagnosis.
-     * @param ob instantiated Observation object.
-     */
     public void addObservation(Observation ob)
     {
+        if(!observations.isEmpty())
+        {
+            if(!ob.startV.equals(observations.get(0).startV))
+            {
+                System.err.println("Observations have different starting points");
+                System.err.println("Use other Analyst or transform the problem");
+                return;
+            }
+        }
         observations.add(ob);
     }
     
-    /**
-     * Adds a fixed time to the starting point, if the model should not start at 0
-     * @param v Vertex that is the starting point
-     * @param i integer with time/cost @ this starting point
-     */
     public void addFixedTime(Vertex v, int i)
     {
         if(fixedTimes.containsKey(v))
@@ -81,120 +73,18 @@ public class Analyst
         fixedTimes.put(v, i);
     }
     
-    /**
-     * Generates all paths for each observation and stores them.
-     */
-    public void generatePaths()
+    public void calculatePaths()
     {
-        // given the observations, what paths must be checked ?
-        // puts them in a map ! -> see simplePaths
-        
-        for(Observation ob : observations)
-        {
-            GraphPath g = new GraphPath(ob.startV);
-            simplePaths(g, ob);
-        }
-    }
-    
-    /**
-     * For each stored path the weights are propagated along the path and the 
-     * results are checked and discrepancies are stored. (needs paths generated
-     * by generatePaths() in order to work)
-     */
-    public void propagateWeights()
-    {
-        // For now first use the stored paths and calculate ALL paths
-        int lb, ub, deltalb, deltaub, changelb, changeub;
-        Integer strtVal;
-        
-        for(Observation o: observations)
-        {
-            LinkedHashSet<GraphPath> paths = obsPaths.get(o);
-            int[] checkBounds = null;
-            if(paths != null)   // only if there are paths
-            {
-                for(GraphPath p : paths)  // lets do each path separate for now
-                {
-                    // First see if there is some fixedTime for the starting vertex
-                    strtVal = fixedTimes.get(o.startV); // lets hope that o.startV == p.getStepV(0)
-                    if(strtVal != null)
-                    {
-                        lb = (int) strtVal;
-                        ub = (int) strtVal;
-                    }
-                    else    // 0 point!
-                    {
-                        lb = 0;
-                        ub = 0;
-                    }
-                    for(int i=1; i < p.stepSize(); i++)
-                    {
-                        DEdge de = p.getStepE(i);
-                        lb += de.getLowerb();
-                        ub += de.getUpperb();
-                    }
-                    deltalb = o.endLb - lb; // lets keep this order and use no abs!
-                    deltaub = o.endUb - ub;
-                    
-                    changelb = Math.min(deltalb, deltaub);
-                    changeub = Math.max(deltalb, deltaub);
-                    int[] chng = new int[2]; //test & check code
-                    chng[0] = changelb;
-                    chng[1] = changeub;
-                    
-                    if(checkBounds != null)
-                    {
-                        if((checkBounds[0] != chng[0])||checkBounds[1] != chng[1])
-                            System.err.println("Inconsistent path found!");
-                    }
-                    else
-                    {
-                        checkBounds = new int[2];
-                        checkBounds[0] = chng[0];
-                        checkBounds[1] = chng[1];
-                    }
-                    diffStore.put(p, chng);
-                    if((chng[0] == 0)&&(chng[1] == 0))
-                        o.fixneeded = false; //quickNdirty
-                    else
-                        o.fixneeded = true;
-                    
-                    for(int j=1; j < p.stepSize(); j++)
-                    {
-                        DEdge de = p.getStepE(j);
-                        de.addPossibleChange(changelb, changeub); 
-                        // store the possible changes
-                    }
-                }
-            }
-        }
-    }
-    
-    /**
-     * Get a list of all possible full diagnosis for this model. Needs propagateWeights
-     * to be done before diagnosis can start.
-     * @return A list of possible Diagnosis for the model
-     */
-    public Diagnosis[] generateDiagnosis()
-    {
-        LinkedList<GraphPath> needDiag = new LinkedList<>();
-        for(Observation ob: observations)
-        {
-            // if observation is wrong....
-            // ie if difference is 0 ????
-            if(ob.fixneeded)
-            {
-                LinkedHashSet<GraphPath> pathSet = obsPaths.get(ob);
-                for(GraphPath p : pathSet)
-                    needDiag.add(p);    // faster way to copy?
-            }
-        }
         /**
-         * CHECK: if no fix is needed the values shouldnt be allowed to change!!
-         * Is it caught with the [0,0] bounds added to the edges of that observ.?
+         * Combines the generate paths and propagate weights of the standard 
+         * analyst
          */
-        generateDiagnosis(new Diagnosis(), needDiag, new ArrayList<>());
-        return diagnosisList.toArray(new Diagnosis[diagnosisList.size()]);
+        
+    }
+    
+    private void pathCalc(GraphPath g, int lb, int ub)
+    {
+        
     }
     
     private void generateDiagnosis(Diagnosis diagOriginal, LinkedList<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
@@ -281,9 +171,6 @@ public class Analyst
         }
     }
     
-    /**
-     * Simple system out print of all paths generated
-     */
     public void printPaths()
     {
         System.out.println("=== Path overview ===");
@@ -306,10 +193,6 @@ public class Analyst
         }
     }
     
-    /**
-     * Prints the discrepancies (if any) for each of the paths for a given observation
-     * @param o Observation object used by the analyst
-     */
     public void printWeights(Observation o)
     {
         System.out.println("=== Observation per path differences ===");
@@ -329,9 +212,6 @@ public class Analyst
         }
     }
     
-    /**
-     * Prints all the different diagnosis on system out
-     */
     public void printDiagnosis()
     {
         int iter = 1;
@@ -343,39 +223,4 @@ public class Analyst
             iter++;
         }
     }
-    
-    private void simplePaths(GraphPath graphPath, Observation obs)
-    {
-        // need to create new set for each new observation!
-        LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(graphPath.getLastV());
-        if(edgeExp == null)
-            return; // dead end!
-        for(DEdge de : edgeExp)
-        {
-            if(de.getEnd().equals(obs.endV)) // end of edge equals end of observation ie. path is correct!
-            {
-                graphPath.addStep(de, de.getEnd());
-                // SAVE
-                LinkedHashSet<GraphPath> paths = obsPaths.get(obs.startV);
-                if(paths == null) 
-                {
-                    paths = new LinkedHashSet();
-                    obsPaths.put(obs, paths);
-                }
-                paths.add(graphPath.copy()); // save A COPY!
-                
-                graphPath.removeLast();
-            }
-            else if(!graphPath.edgeUsed(de))
-            {
-                graphPath.addStep(de, de.getEnd());
-                simplePaths(graphPath, obs);
-                graphPath.removeLast();
-            }
-        }
-    }
-    
-    /**
-     * Either point has a fixed time or assume first Vertex is 0
-     */
 }

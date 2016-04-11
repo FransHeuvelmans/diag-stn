@@ -1,4 +1,6 @@
-# sample yaml description of Graph
+# Sample yaml description of Graph
+# For use in Diag-STN
+# Frans van den Heuvel 2016
 
 # First an overview of all the vertices used (loads in id, so check that !)
 # note that the names need to be strings

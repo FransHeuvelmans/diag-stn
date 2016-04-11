@@ -26,8 +26,9 @@ import java.util.logging.Logger;
 import org.yaml.snakeyaml.*;
 
 /**
- *
- * @author frans
+ * Entry point for program. Handles basic input/output, commandline paremeters
+ * and starts the different parts of the program.
+ * @author Frans van den Heuvel
  */
 public class DiagSTN
 {
@@ -42,9 +43,9 @@ public class DiagSTN
             readAndProcess(args[0]);
             return;
         }
-        // testCase1();
         
-        readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/testSerialization.yml");
+        // testCase1();
+        // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/testSerialization.yml");
     }
     
     public static void readAndProcess(String file)
@@ -152,6 +153,11 @@ public class DiagSTN
         analyst.generateDiagnosis();
         
         analyst.printDiagnosis();
+    }
+    
+    public static void testCase2()
+    {
+        
     }
 
     /**

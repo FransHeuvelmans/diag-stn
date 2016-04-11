@@ -22,8 +22,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- *
- * @author frans
+ * Stores the full graph for solving STN. Only the basic Graph representation, no
+ * other time or other information.
+ * @author Frans van den Heuvel
  */
 public class Graph
 {
@@ -32,6 +33,9 @@ public class Graph
     private Map<Vertex, LinkedHashSet<DEdge>> map = new HashMap(); 
     // Extra map with all the edges from a Vertex
     
+    /**
+     * Generate empty Graph
+     */
     public Graph()
     {
         nodes = new LinkedHashSet<>();
@@ -42,6 +46,13 @@ public class Graph
         map = new HashMap();
     }
     
+    /**
+     * Create a new edge and add it to the Graph
+     * @param start Starting vertex of the edge
+     * @param end Ending vertex
+     * @param lowerbound lower bound on the time needed (cost)
+     * @param upperbound upper bound on the time needed (cost) 
+     */
     public void addEdge(Vertex start, Vertex end, int lowerbound, int upperbound)
     {
         // check if vertices exist! (are part of the network)
@@ -60,11 +71,19 @@ public class Graph
         adjacent.add(e);
     }
     
+    /**
+     * Adds a Vertex to the Graph
+     * @param v Vertex object created outside the Graph
+     */
     public void addVertex(Vertex v)
     {
         nodes.add(v);
     }
     
+    /**
+     * Find all vertices that can be reached in 1 step from given Vertex
+     * @return LinkedList with all Vertices near
+     */
     public LinkedList<Vertex> adjacentNodes(Vertex last)
     {
         LinkedHashSet<DEdge> edges = map.get(last);
@@ -76,11 +95,19 @@ public class Graph
         return adjacent;
     }
     
+    /**
+     * What possible edges can be used from given Vertex
+     */
     public LinkedHashSet<DEdge> possibleEdges(Vertex v)
     {
         return map.get(v); // warning, can return null!
     }
     
+    /**
+     * Is there an edge going from 1 vertex to the other
+     * @param fro Staring Vertex
+     * @param to Destination/ending Vertex
+     */
     public boolean directReach(Vertex fro, Vertex to)
     {
         Set<DEdge> edges = map.get(fro);
@@ -97,7 +124,7 @@ public class Graph
     
     /**
      * Returns first Vertex with a certain name
-     * @param name
+     * @param name String with the name of the Vertex
      * @return the Vertex OR null !
      */
     public Vertex getVertex(String name)
@@ -111,6 +138,11 @@ public class Graph
         return null;
     }
     
+    /**
+     * Returns the Vertex with a certain ID value
+     * @param id integer for identification
+     * @return Vertex object or null if no vertex was found
+     */
     public Vertex getVertex(int id)
     {
         for(Vertex v : nodes)
