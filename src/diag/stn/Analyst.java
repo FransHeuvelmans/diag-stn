@@ -366,10 +366,10 @@ public class Analyst
                 
                 graphPath.removeLast();
             }
-            else if(!graphPath.edgeUsed(de))
+            else if(!graphPath.edgeUsed(de)) // Edge has not been used yet
             {
                 graphPath.addStep(de, de.getEnd());
-                simplePaths(graphPath, obs);
+                simplePaths(graphPath, obs); // use it!
                 graphPath.removeLast();
             }
         }

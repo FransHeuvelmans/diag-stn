@@ -84,7 +84,7 @@ public class SOAnalyst
     
     private void pathCalc(GraphPath g, int lb, int ub)
     {
-        
+        // combine generatePaths & propagateWeights
     }
     
     private void generateDiagnosis(Diagnosis diagOriginal, LinkedList<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)

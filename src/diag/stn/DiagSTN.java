@@ -45,6 +45,7 @@ public class DiagSTN
         }
         
         // testCase1();
+        // testCase2();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/testSerialization.yml");
     }
     
@@ -157,7 +158,128 @@ public class DiagSTN
     
     public static void testCase2()
     {
+        int ids = 0;
         
+        // Explain the STN
+        Graph graph = new Graph();
+        Vertex a = new Vertex(ids++, "0");
+        Vertex b = new Vertex(ids++, "1");
+        Vertex c = new Vertex(ids++, "2");
+        Vertex d = new Vertex(ids++, "3");
+        Vertex e = new Vertex(ids++, "4");
+        Vertex f = new Vertex(ids++, "5");
+        Vertex g = new Vertex(ids++, "6");
+        
+        graph.addVertex(a);
+        graph.addVertex(b);
+        graph.addVertex(c);
+        graph.addVertex(d);
+        graph.addVertex(e);
+        graph.addVertex(f);
+        graph.addVertex(g);
+        
+        graph.addEdge(a, b, 5, 10);
+        graph.addEdge(b, c, 8, 20);
+        graph.addEdge(c, d, 4, 6);
+        graph.addEdge(d, e, 55, 70);
+        graph.addEdge(e, f, 10, 20);
+        graph.addEdge(f, g, 9, 14);
+        
+        // t0 to t3 == [ 17 - 36]
+        // t0 to t6 == [ 91 - 140]
+        
+        Observation ob1 = new Observation(a,d,17,36);
+        Observation ob2 = new Observation(a,g,70,115);
+        
+        // analysis part
+        Analyst analyst = new Analyst(graph);
+        analyst.addObservation(ob1);
+        analyst.addObservation(ob2);
+        
+        analyst.generatePaths();
+        
+        analyst.printPaths();
+        
+        analyst.propagateWeights();
+        
+        analyst.printWeights(ob1);
+        
+        analyst.printWeights(ob2);
+        
+        analyst.generateDiagnosis();
+        
+        analyst.printDiagnosis();
+    }
+    
+    public static void testCase3()
+    {
+        int ids = 0;
+        
+        // Explain the STN
+        Graph graph = new Graph();
+        Vertex a = new Vertex(ids++, "a");
+        Vertex b = new Vertex(ids++, "b");
+        Vertex c = new Vertex(ids++, "c");
+        Vertex d = new Vertex(ids++, "d");
+        Vertex e = new Vertex(ids++, "e");
+        Vertex f = new Vertex(ids++, "f");
+        Vertex g = new Vertex(ids++, "g");
+        Vertex h = new Vertex(ids++, "h");
+        Vertex i = new Vertex(ids++, "i");
+        Vertex j = new Vertex(ids++, "j");
+        Vertex k = new Vertex(ids++, "k");
+        Vertex l = new Vertex(ids++, "l");
+        
+        graph.addVertex(a);
+        graph.addVertex(b);
+        graph.addVertex(c);
+        graph.addVertex(d);
+        graph.addVertex(e);
+        graph.addVertex(f);
+        graph.addVertex(g);
+        graph.addVertex(h);
+        graph.addVertex(i);
+        graph.addVertex(j);
+        graph.addVertex(k);
+        graph.addVertex(l);
+        
+        graph.addEdge(a, b, 3, 6);
+        graph.addEdge(b, c, 4, 7);
+        graph.addEdge(c, d, 10, 12);
+        graph.addEdge(d, e, 5, 9);
+        graph.addEdge(e, f, 18, 19);
+        graph.addEdge(b, g, 5, 8);
+        graph.addEdge(g, h, 5, 10); //todo
+        graph.addEdge(h, i, 5, 10); //todo
+        graph.addEdge(h, e, 5, 10); //todo
+        graph.addEdge(g, j, 7, 12);
+        graph.addEdge(j, k, 14, 16);
+        graph.addEdge(k, l, 3, 12);
+        
+        // 3 obs between a-f, a-i and a-l
+        Observation ob1 = new Observation(a,f,5,10); //todo
+        Observation ob2 = new Observation(a,i,5,10); //todo
+        Observation ob3 = new Observation(a,l,5,10); //todo
+        
+        // analysis part
+        Analyst analyst = new Analyst(graph);
+        analyst.addObservation(ob1);
+        analyst.addObservation(ob2);
+        analyst.addObservation(ob3);
+        
+        analyst.generatePaths();
+        
+        analyst.printPaths();
+        
+        analyst.propagateWeights();
+        
+        analyst.printWeights(ob1);
+        
+        analyst.printWeights(ob2);
+        
+        analyst.generateDiagnosis();
+        
+        analyst.printDiagnosis();
     }
 
     /**
