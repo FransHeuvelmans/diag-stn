@@ -15,6 +15,8 @@
  */
 package diag.stn;
 
+import diag.stn.GraphGenerator.GraphObs;
+import diag.stn.analyze.*;
 import diag.stn.STN.*;
 
 // IO imports
@@ -46,6 +48,7 @@ public class DiagSTN
         
         // testCase1();
         // testCase2();
+        testCase3();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/testSerialization.yml");
     }
     
@@ -102,6 +105,25 @@ public class DiagSTN
             Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
         }
         
+    }
+    
+    public static void runRandomGen()
+    {
+        // for now no input variables (maybe later catch commandline input)
+        
+        GraphGenerator gen = new GraphGenerator();
+        
+        GraphObs strct = gen.generateABGraph(150, 2, false);
+        Analyst al = new Analyst(strct.graph);
+        for(Observation ob : strct.observations)
+        {
+            al.addObservation(ob);
+        }
+        
+        al.generatePaths();
+        al.propagateWeights();
+        al.generateDiagnosis();
+        al.printDiagnosis();
     }
     
     public static void testCase1()
@@ -249,18 +271,18 @@ public class DiagSTN
         graph.addEdge(d, e, 5, 9);
         graph.addEdge(e, f, 18, 19);
         graph.addEdge(b, g, 5, 8);
-        graph.addEdge(g, h, 5, 10); //todo
-        graph.addEdge(h, i, 5, 10); //todo
-        graph.addEdge(h, e, 5, 10); //todo
-        graph.addEdge(g, j, 7, 12);
+        graph.addEdge(g, h, 8, 11);
+        graph.addEdge(h, i, 1, 16);
+        graph.addEdge(h, e, 6, 9);
+        graph.addEdge(g, j, 7, 22);
         graph.addEdge(j, k, 14, 16);
         graph.addEdge(k, l, 3, 12);
         
         // 3 obs between a-f, a-i and a-l
-        Observation ob1 = new Observation(a,f,5,10); //todo
-        Observation ob2 = new Observation(a,i,5,10); //todo
-        Observation ob3 = new Observation(a,l,5,10); //todo
-        
+        Observation ob1 = new Observation(a,f,40,53);
+        Observation ob2 = new Observation(a,i,36,65);
+        //Observation ob3 = new Observation(a,l,32,64); // correct obs
+        Observation ob3 = new Observation(a,l,28,48);
         // analysis part
         Analyst analyst = new Analyst(graph);
         analyst.addObservation(ob1);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 frans.
+ * Copyright 2016 Frans van den Heuvel.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package diag.stn;
+package diag.stn.analyze;
 
+import diag.stn.analyze.GraphPath;
+import diag.stn.analyze.Diagnosis;
 import diag.stn.STN.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,7 +29,7 @@ import java.util.Map;
  * using the property of a system that there is only a single (starting) point
  * from which the observations are made. (Examples include when using a clock
  * to sync all observations)
- * @author frans
+ * @author Frans van den Heuvel
  */
 public class SOAnalyst
 {
