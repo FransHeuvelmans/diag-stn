@@ -38,7 +38,7 @@ public class Analyst
     private Map<Observation, LinkedHashSet<GraphPath>> obsPaths;
     private ArrayList<Diagnosis> diagnosisList;
     
-    private Map<GraphPath, int[]> diffStore; // Just 4 testing/debugging the propagated diffs.
+    private Map<GraphPath, int[]> diffStore; // Need to store changes before applying to the path
     
     
     // Each observation might have multiple paths connected
@@ -114,6 +114,7 @@ public class Analyst
             sizeObs = o.endUb - o.endLb;
             LinkedHashSet<GraphPath> paths = obsPaths.get(o);
             int[] checkBounds = null;
+            ArrayList<int[]> pathBounds = new ArrayList();
             if(paths != null)   // only if there are paths
             {
                 for(GraphPath p : paths)  // lets do each path separate for now
@@ -136,6 +137,12 @@ public class Analyst
                         lb += de.getLowerb();
                         ub += de.getUpperb();
                     }
+                    int[] lbub = new int[2];
+                    lbub[0] = lb;
+                    lbub[1] = ub;
+                    pathBounds.add(lbub); // first just store the raw data
+                    
+                    // TODO: Remove should start here
                     deltalb = o.endLb - lb; // lets keep this order and use no abs!
                     deltaub = o.endUb - ub;
                     
@@ -150,7 +157,9 @@ public class Analyst
                     chng = new int[2]; //test & check code
                     chng[0] = changelb;
                     chng[1] = changeub;
+                    diffStore.put(p, chng);// First store each of the paths
                     
+                    // START REMOVE HERE 
                     if(checkBounds != null)
                     {
                         if((checkBounds[0] != chng[0])||checkBounds[1] != chng[1])
@@ -162,7 +171,8 @@ public class Analyst
                         checkBounds[0] = chng[0];
                         checkBounds[1] = chng[1];
                     }
-                    diffStore.put(p, chng);
+                    
+                    
                     if((chng[0] == 0)&&(chng[1] == 0))
                         o.fixneeded = false; //quickNdirty
                     else
@@ -172,6 +182,78 @@ public class Analyst
                     {
                         DEdge de = p.getStepE(j);
                         de.addPossibleChange(changelb, changeub); 
+                        // store the possible changes
+                    }
+                    // END HERE (make sure that function has been put somewhere else)
+                }
+                // Refine/combine all the Bounds to a single bound
+                int[] finalBounds = pathBounds.get(0).clone(); // should be a path!
+                int[] union = finalBounds.clone();
+                int[] intersect = finalBounds.clone();
+                for(int i = 1; i < pathBounds.size(); i++)
+                {
+                    int[] addBound = pathBounds.get(i).clone();
+                    if((addBound[0] > intersect[1]) || (addBound[1] < intersect[0]))
+                    {
+                        System.err.println("Inconsistent path found!");
+                        // Abort ??
+                    }
+                    int unionlb = union[0] < addBound[0] ? union[0] : addBound[0];
+                    int unionub = union[1] > addBound[1] ? union[1] : addBound[1];
+                    union[0] = unionlb;
+                    union[1] = unionub;
+                    int intsctlb = intersect[0] > addBound[0] ? intersect[0] : addBound[0];
+                    int intsctub = intersect[1] < addBound[1] ? intersect[1] : addBound[1];
+                    intersect[0] = intsctlb;
+                    intersect[1] = intsctub;
+                }
+                
+                int sizeUnion = union[1] - union[0];
+                if(sizeObs > sizeUnion)
+                {
+                    // Fits in the whole obs
+                    finalBounds[0] = o.endLb - union[0];
+                    finalBounds[1] = o.endUb - union[1];
+                    // similar to the old delta-lb/ub
+                }
+                else
+                {
+                    // Need to fit intersection in there!
+                    int lbChange, lbIntChange, lbUnChange;
+                    lbIntChange = o.endLb - intersect[0];
+                    lbUnChange = o.endUb - union[1]; 
+                    // union should explain whole obs (since union > obs)
+                    
+                    // TODO: ubChange should be the _abs_(smallest) change of the 2
+                    // Riight ??? (test this first in notes!)
+                    
+                    int ubChange, ubIntChange, ubUnChange;
+                    // TODO same for ub!!
+                    
+                    finalBounds[0] = lbChange;
+                    finalBounds[1] = ubChange;
+                }
+                
+                // TODO: add Math.min / Math.max stuff here (???)
+                
+                // This actually means if some movement is possible
+                // or atleast should be suggested
+                if((finalBounds[0] == 0)&&(finalBounds[1] == 0))
+                        o.fixneeded = false; //quickNdirty
+                else 
+                        o.fixneeded = true;
+                
+                /*
+                 * Now finally add the possible changes to all the edges.
+                 * Can only be done after we know what changes will be applied
+                 * to the other paths (of this observation) 
+                 */
+                for(GraphPath p : paths)
+                {
+                    for(int j=1; j < p.stepSize(); j++)
+                    {
+                        DEdge de = p.getStepE(j);
+                        de.addPossibleChange(finalBounds[0], finalBounds[1]); 
                         // store the possible changes
                     }
                 }
