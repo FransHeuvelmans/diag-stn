@@ -28,6 +28,7 @@ public class Observation
     public Vertex endV;
     public int endLb, endUb; // time
     public boolean fixneeded;
+    public boolean moreAccurate;
     
     /**
      * Create new Observation on a Graph
@@ -38,6 +39,11 @@ public class Observation
      */
     public Observation(Vertex sV, Vertex eV, int lb, int ub)
     {
+        if(ub < lb)
+        {
+            System.err.println("Observation upper bound must be greater than "
+                    + "lower bound");
+        }
         startV = sV;
         endV = eV;
         endLb = lb;

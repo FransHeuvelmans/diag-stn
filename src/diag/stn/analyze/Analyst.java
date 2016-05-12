@@ -15,8 +15,9 @@
  */
 package diag.stn.analyze;
 
+import diag.stn.DiagSTN;
 import diag.stn.STN.*;
-import  java.lang.Math;
+import java.lang.Math;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
@@ -104,11 +105,13 @@ public class Analyst
     public void propagateWeights()
     {
         // For now first use the stored paths and calculate ALL paths
-        int lb, ub, deltalb, deltaub, changelb, changeub;
+        int lb, ub, deltalb, deltaub, changelb, changeub, sizeObs, sizePred;
+        int[] chng;
         Integer strtVal;
         
         for(Observation o: observations)
         {
+            sizeObs = o.endUb - o.endLb;
             LinkedHashSet<GraphPath> paths = obsPaths.get(o);
             int[] checkBounds = null;
             if(paths != null)   // only if there are paths
@@ -136,9 +139,15 @@ public class Analyst
                     deltalb = o.endLb - lb; // lets keep this order and use no abs!
                     deltaub = o.endUb - ub;
                     
+                    sizePred = ub - lb;
+                    if(sizeObs < sizePred) // A check to add some info to the observation
+                        o.moreAccurate = true;
+                    else
+                        o.moreAccurate = false;
+                    
                     changelb = Math.min(deltalb, deltaub);
                     changeub = Math.max(deltalb, deltaub);
-                    int[] chng = new int[2]; //test & check code
+                    chng = new int[2]; //test & check code
                     chng[0] = changelb;
                     chng[1] = changeub;
                     
@@ -325,6 +334,13 @@ public class Analyst
                     int[] bounds = diffStore.get(p);
                     System.out.println("Diff lb:" + bounds[0] + " ub:" + bounds[1]);
                 }
+            }
+            if(DiagSTN.PRINTACC)
+            {
+                if(o.moreAccurate)
+                    System.out.println("Observation is more accurate than prediction");
+                else
+                    System.out.println("Observation is less accurate than prediction");
             }
         }
     }

@@ -34,7 +34,8 @@ import org.yaml.snakeyaml.*;
  */
 public class DiagSTN
 {
-
+    public static final boolean PRINTACC = true;
+    
     /**
      * @param args the command line arguments
      */
@@ -48,8 +49,8 @@ public class DiagSTN
         
         // testCase1();
         // testCase2();
-        testCase3();
-        // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/testSerialization.yml");
+         testCase3();
+        // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/moreAcc.yml");
     }
     
     public static void readAndProcess(String file)
@@ -90,7 +91,7 @@ public class DiagSTN
                 int endId = (int) obsMap.get("end");
                 Vertex start = graph.getVertex(startId);
                 Vertex end = graph.getVertex(endId);
-                Observation o = new Observation(start,end,(int) obsMap.get("lb"),(int) obsMap.get("end"));
+                Observation o = new Observation(start,end,(int) obsMap.get("lb"),(int) obsMap.get("ub"));
                 analyst.addObservation(o);
             }
             
