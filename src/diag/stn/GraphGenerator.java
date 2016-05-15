@@ -41,7 +41,7 @@ public class GraphGenerator
      * have many incoming!)
      * @return filled Graph
      */
-    public GraphObs generateABGraph(int size, int linksPerStep, boolean onlymax)
+    public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax)
     {
         Random rand = new Random();
         GraphObs grOb = new GraphObs();

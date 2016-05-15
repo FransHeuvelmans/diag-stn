@@ -105,15 +105,13 @@ public class Analyst
     public void propagateWeights()
     {
         // For now first use the stored paths and calculate ALL paths
-        int lb, ub, deltalb, deltaub, changelb, changeub, sizeObs, sizePred;
-        int[] chng;
+        int lb, ub, deltalb, deltaub, sizeObs, sizePred;
         Integer strtVal;
         
         for(Observation o: observations)
         {
             sizeObs = o.endUb - o.endLb;
             LinkedHashSet<GraphPath> paths = obsPaths.get(o);
-            int[] checkBounds = null;
             ArrayList<int[]> pathBounds = new ArrayList();
             if(paths != null)   // only if there are paths
             {
@@ -141,107 +139,89 @@ public class Analyst
                     lbub[0] = lb;
                     lbub[1] = ub;
                     pathBounds.add(lbub); // first just store the raw data
-                    
-                    // TODO: Remove should start here
-                    deltalb = o.endLb - lb; // lets keep this order and use no abs!
-                    deltaub = o.endUb - ub;
-                    
-                    sizePred = ub - lb;
-                    if(sizeObs < sizePred) // A check to add some info to the observation
-                        o.moreAccurate = true;
-                    else
-                        o.moreAccurate = false;
-                    
-                    changelb = Math.min(deltalb, deltaub);
-                    changeub = Math.max(deltalb, deltaub);
-                    chng = new int[2]; //test & check code
-                    chng[0] = changelb;
-                    chng[1] = changeub;
-                    diffStore.put(p, chng);// First store each of the paths
-                    
-                    // START REMOVE HERE 
-                    if(checkBounds != null)
-                    {
-                        if((checkBounds[0] != chng[0])||checkBounds[1] != chng[1])
-                            System.err.println("Inconsistent path found!");
-                    }
-                    else
-                    {
-                        checkBounds = new int[2];
-                        checkBounds[0] = chng[0];
-                        checkBounds[1] = chng[1];
-                    }
-                    
-                    
-                    if((chng[0] == 0)&&(chng[1] == 0))
-                        o.fixneeded = false; //quickNdirty
-                    else
-                        o.fixneeded = true;
-                    
-                    for(int j=1; j < p.stepSize(); j++)
-                    {
-                        DEdge de = p.getStepE(j);
-                        de.addPossibleChange(changelb, changeub); 
-                        // store the possible changes
-                    }
-                    // END HERE (make sure that function has been put somewhere else)
                 }
                 // Refine/combine all the Bounds to a single bound
-                int[] finalBounds = pathBounds.get(0).clone(); // should be a path!
-                int[] union = finalBounds.clone();
-                int[] intersect = finalBounds.clone();
-                for(int i = 1; i < pathBounds.size(); i++)
+                int[] finalChange = pathBounds.get(0).clone(); // should be a path!
+                int[] union = finalChange.clone();
+                int[] intersect = finalChange.clone();
+                if(pathBounds.size() > 1)
                 {
-                    int[] addBound = pathBounds.get(i).clone();
-                    if((addBound[0] > intersect[1]) || (addBound[1] < intersect[0]))
+                    for(int i = 1; i < pathBounds.size(); i++)
                     {
-                        System.err.println("Inconsistent path found!");
-                        // Abort ??
+                        int[] addBound = pathBounds.get(i).clone();
+                        if((addBound[0] > intersect[1]) || (addBound[1] < intersect[0]))
+                        {
+                            System.err.println("Inconsistent path found!");
+                            // Abort ??
+                        }
+                        int unionlb = union[0] < addBound[0] ? union[0] : addBound[0];
+                        int unionub = union[1] > addBound[1] ? union[1] : addBound[1];
+                        union[0] = unionlb;
+                        union[1] = unionub;
+                        int intsctlb = intersect[0] > addBound[0] ? intersect[0] : addBound[0];
+                        int intsctub = intersect[1] < addBound[1] ? intersect[1] : addBound[1];
+                        intersect[0] = intsctlb;
+                        intersect[1] = intsctub;
                     }
-                    int unionlb = union[0] < addBound[0] ? union[0] : addBound[0];
-                    int unionub = union[1] > addBound[1] ? union[1] : addBound[1];
-                    union[0] = unionlb;
-                    union[1] = unionub;
-                    int intsctlb = intersect[0] > addBound[0] ? intersect[0] : addBound[0];
-                    int intsctub = intersect[1] < addBound[1] ? intersect[1] : addBound[1];
-                    intersect[0] = intsctlb;
-                    intersect[1] = intsctub;
                 }
                 
                 int sizeUnion = union[1] - union[0];
-                if(sizeObs > sizeUnion)
+                int sizeInter = intersect[1] - intersect[0];
+                
+                if((sizeUnion == sizeInter) || (sizeInter > sizeObs))
+                {
+                    // Same as old code! <- should handle all the old sample cases
+                    deltalb = o.endLb - intersect[0];
+                    deltaub = o.endUb - intersect[1];
+                    // also handles the large(r than obs) intersection cases
+                }
+                else if(sizeObs >= sizeUnion)
                 {
                     // Fits in the whole obs
-                    finalBounds[0] = o.endLb - union[0];
-                    finalBounds[1] = o.endUb - union[1];
+                    deltalb = o.endLb - union[0];
+                    deltaub = o.endUb - union[1];
                     // similar to the old delta-lb/ub
                 }
                 else
                 {
                     // Need to fit intersection in there!
-                    int lbChange, lbIntChange, lbUnChange;
+                    // (or show how far it can move
+                    int lbIntChange, lbUnChange;
+                    
                     lbIntChange = o.endLb - intersect[0];
                     lbUnChange = o.endUb - union[1]; 
                     // union should explain whole obs (since union > obs)
                     
-                    // TODO: ubChange should be the _abs_(smallest) change of the 2
-                    // Riight ??? (test this first in notes!)
+                    // pick the biggest
+                    deltalb = lbIntChange > lbUnChange ? lbIntChange : lbUnChange;
                     
-                    int ubChange, ubIntChange, ubUnChange;
-                    // TODO same for ub!!
+                    int ubIntChange, ubUnChange;
                     
-                    finalBounds[0] = lbChange;
-                    finalBounds[1] = ubChange;
+                    ubIntChange = o.endUb - intersect[1];
+                    ubUnChange = o.endLb - union[0];
+                    
+                    deltaub = ubIntChange < ubUnChange ? ubIntChange : ubUnChange;
                 }
                 
-                // TODO: add Math.min / Math.max stuff here (???)
+                // Store them in the right order
+                finalChange[0] = Math.min(deltalb, deltaub);
+                finalChange[1] = Math.max(deltalb, deltaub);
+                
+                // The diffstore.put part is moved to the Paths-loop at the end
                 
                 // This actually means if some movement is possible
                 // or atleast should be suggested
-                if((finalBounds[0] == 0)&&(finalBounds[1] == 0))
-                        o.fixneeded = false; //quickNdirty
+                if((finalChange[0] == 0)&&(finalChange[1] == 0))
+                    o.fixneeded = false; //quickNdirty
                 else 
-                        o.fixneeded = true;
+                    o.fixneeded = true;
+                
+                // What is the size of the prediction ?? -> simply use Union
+                sizePred = union[1] - union[0];
+                if(sizeObs < sizePred) // A check to add some info to the observation
+                    o.moreAccurate = true;
+                else
+                    o.moreAccurate = false;
                 
                 /*
                  * Now finally add the possible changes to all the edges.
@@ -250,13 +230,20 @@ public class Analyst
                  */
                 for(GraphPath p : paths)
                 {
+                    diffStore.put(p, finalChange); // Store values for output
+                    
                     for(int j=1; j < p.stepSize(); j++)
                     {
                         DEdge de = p.getStepE(j);
-                        de.addPossibleChange(finalBounds[0], finalBounds[1]); 
+                        de.addPossibleChange(finalChange[0], finalChange[1]); 
                         // store the possible changes
                     }
                 }
+            }
+            else
+            {
+                System.out.println("Observation with no paths tried propagation");
+                // No paths in the LinkedHashSet paths that is!
             }
         }
     }

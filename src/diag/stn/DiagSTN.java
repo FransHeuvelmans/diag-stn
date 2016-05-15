@@ -114,7 +114,7 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateABGraph(150, 2, false);
+        GraphObs strct = gen.generateBAGraph(150, 2, false);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {

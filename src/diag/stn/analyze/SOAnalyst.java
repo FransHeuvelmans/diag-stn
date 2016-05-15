@@ -81,12 +81,83 @@ public class SOAnalyst
          * Combines the generate paths and propagate weights of the standard 
          * analyst
          */
+        if(observations.isEmpty())
+            System.err.println("No observations added before calculation");
+        Observation ob = observations.get(0);
+        for(int i = 1; i < observations.size(); i++)
+        {
+            Observation otherob = observations.get(i);
+            if(ob.startV != otherob.startV)
+            {
+                System.err.println("Observations have "
+                        + "different starting vertices");
+            }
+        }
+        GraphPath g = new GraphPath(ob.startV);
+        Integer strtVal = fixedTimes.get(ob.startV); // lets hope that o.startV == p.getStepV(0)
+        int lb,ub;
+        if(strtVal != null)
+        {
+            lb = (int) strtVal;
+            ub = (int) strtVal;
+        }
+        else    // 0 point!
+        {
+            lb = 0;
+            ub = 0;
+        }
+        pathCalc(g, lb, ub);
         
+        // TODO: Combination of changes for the different paths 
+        // of an observation here (see Analyst for now)
     }
     
     private void pathCalc(GraphPath g, int lb, int ub)
     {
+        int dlb,dub;
         // combine generatePaths & propagateWeights
+        LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(g.getLastV());
+        
+         if(edgeExp == null)
+            return; // dead end!
+        for(DEdge de : edgeExp)
+        {
+            if(!g.edgeUsed(de))
+            {
+                g.addStep(de, de.getEnd());
+                dlb = de.getLowerb();
+                dub = de.getUpperb();
+                lb += dlb;
+                ub += dub;
+                for(Observation o : observations)
+                {
+                    if(de.getEnd().equals(o.endV))
+                    {
+                        LinkedHashSet<GraphPath> paths = obsPaths.get(o.startV);
+                        if(paths == null) 
+                        {
+                            paths = new LinkedHashSet();
+                            obsPaths.put(o, paths);
+                        }
+                        paths.add(g.copy());
+                        int[] lbub = new int[2];
+                        lbub[0] = lb;
+                        lbub[1] = ub;
+                        diffStore.put(g, lbub);
+                        // !!!! WARNING, STILL NEEDS CODE TO COMBINE CHANGES
+                        // TO A PROPER lbub (for all paths on 1 obs)
+                    }
+                }
+                
+                pathCalc(g,lb,ub);
+                g.removeLast();
+            }
+        }
+        
+        /**
+         * When storing use the observation that needs to be found with the 
+         * combination of starting vertex and ending vertex!
+         */
     }
     
     private void generateDiagnosis(Diagnosis diagOriginal, LinkedList<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
