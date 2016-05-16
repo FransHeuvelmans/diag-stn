@@ -49,8 +49,8 @@ public class DiagSTN
         
         // testCase1();
         // testCase2();
-         testCase3();
-        // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/moreAcc.yml");
+        // testCase3();
+        readAndProcess("/home/frans/NetBeansProjects/diag-stn/test/Data/partConsistent.yml");
     }
     
     public static void readAndProcess(String file)
@@ -98,6 +98,8 @@ public class DiagSTN
             analyst.generatePaths();
             analyst.propagateWeights();
             analyst.generateDiagnosis();
+            analyst.printPaths();
+            analyst.printWeights();
             analyst.printDiagnosis();
             
         } catch (FileNotFoundException ex)
@@ -281,6 +283,7 @@ public class DiagSTN
         
         // 3 obs between a-f, a-i and a-l
         Observation ob1 = new Observation(a,f,40,53);
+        //Observation ob2 = new Observation(a,l,17,41); // correct obs
         Observation ob2 = new Observation(a,i,36,65);
         //Observation ob3 = new Observation(a,l,32,64); // correct obs
         Observation ob3 = new Observation(a,l,28,48);

@@ -203,6 +203,11 @@ public class Analyst
                     deltaub = ubIntChange < ubUnChange ? ubIntChange : ubUnChange;
                 }
                 
+                System.out.println("Intersect:[" + intersect[0] + ","
+                        + intersect[1] + "]");
+                System.out.println("Union:[" + union[0] + ","
+                        + union[1] + "]");
+                
                 // Store them in the right order
                 finalChange[0] = Math.min(deltalb, deltaub);
                 finalChange[1] = Math.max(deltalb, deltaub);
@@ -415,6 +420,19 @@ public class Analyst
     }
     
     /**
+     *  Print all observations
+     */
+    public void printWeights()
+    {
+        for(Observation o: observations)
+        {
+            if(o.fixneeded)
+                printWeights(o);
+            // might need further testing for valid observations
+        }
+    }
+    
+    /**
      * Prints all the different diagnosis on system out
      */
     public void printDiagnosis()
@@ -441,7 +459,7 @@ public class Analyst
             {
                 graphPath.addStep(de, de.getEnd());
                 // SAVE
-                LinkedHashSet<GraphPath> paths = obsPaths.get(obs.startV);
+                LinkedHashSet<GraphPath> paths = obsPaths.get(obs);
                 if(paths == null) 
                 {
                     paths = new LinkedHashSet();
