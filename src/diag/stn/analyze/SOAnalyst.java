@@ -148,8 +148,8 @@ public class SOAnalyst
                         // TO A PROPER lbub (for all paths on 1 obs)
                     }
                 }
-                
-                pathCalc(g,lb,ub);
+                if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
+                    pathCalc(g,lb,ub);
                 g.removeLast();
             }
         }
