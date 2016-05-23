@@ -16,6 +16,9 @@
 package diag.stn;
 
 import diag.stn.STN.*;
+import diag.stn.analyze.GraphPath;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 
@@ -25,15 +28,25 @@ import java.util.Random;
  */
 public class GraphGenerator
 {
+    
+    private int id; // stores Vertex id & names
+    private ArrayList<BuildVertex> vertInfo; // stores degrees
+    private int numEdges;
+    
     /**
      * Struct like combination of the Graph and its Observations
      */
     public class GraphObs
     {
-        Graph graph;
-        List<Observation> observations;
+        public Graph graph;
+        public List<Observation> observations;
     }
     
+    public class BuildVertex
+    {
+        public Vertex vert;
+        public int degree;
+    }
     
     /**
      * Generates a new Graph (roughly) according to the Barabàsi-Albert model.
@@ -45,13 +58,14 @@ public class GraphGenerator
     {
         Random rand = new Random();
         GraphObs grOb = new GraphObs();
+        vertInfo = new ArrayList();
         
         /**
          * Maybe use hashmap to store incoming # for each vertex and store those
          * need it somewhere (best in here)
          */
         
-        int id = 1;
+        id = 0;
         Graph gr = new Graph();
         Vertex first = new Vertex(id);
         gr.addVertex(first);
@@ -60,8 +74,18 @@ public class GraphGenerator
         id++;
         int lb = rand.nextInt(51);
         int ub = lb + rand.nextInt(21);
-        gr.addEdge(second, first, lb, ub); 
+        gr.addEdge(second, first, lb, ub);
         // Keep this direction for all the vertices to add (new to old)
+        BuildVertex bv = new BuildVertex();
+        bv.vert = first;
+        bv.degree = 1;
+        vertInfo.add(bv);
+        bv = new BuildVertex();
+        bv.vert = second;
+        bv.degree = 1;
+        vertInfo.add(bv);
+        numEdges = 1;  
+        
         if(size < 3)
         {
             System.err.println("Graph generation is only for larger graphs "
@@ -73,13 +97,12 @@ public class GraphGenerator
         {
             System.err.println("Can't have more edges than vertices for this"
                     + " AB method");
-            grOb.graph = gr;
-            return grOb;
+            linksPerStep = size;
         }
         for(int i = 2; i < size; i++) // already 2 vertices
         {
             int links = Math.min(i + 1, linksPerStep);
-            ABaddVertex(gr, links, onlymax);
+            BAaddVertex(gr, links, onlymax);
         }
         
         grOb.graph = gr;
@@ -98,9 +121,105 @@ public class GraphGenerator
         return grOb;
     }
     
-    private void ABaddVertex(Graph g, int links, boolean onlymax)
+    private void BAaddVertex(Graph g, int links, boolean onlymax)
     {
+        Random rand = new Random();
         // create this new vertex and add some edges !
+        Vertex newV = new Vertex(id);
+        id++;
+        g.addVertex(newV);
+        BuildVertex nbv = new BuildVertex();
+        nbv.degree = 0;
+        nbv.vert = newV;
+        vertInfo.add(nbv); // should be @ location "id" ...
+        
+        // Decide how many connections to make 
+        if(!onlymax)
+        {
+            int oldlinks = links;
+            links = rand.nextInt(oldlinks);
+            // We allow 0 links, for the network to get more than 1 end point!
+        }
+        
+        int ignore = 0;
+        int add = 0;
+        while(links>0)  // While there are new edges needed, addmore!
+        {
+            double prob = 0;    // the odds
+            double randNum = rand.nextDouble();
+            
+            for(BuildVertex bigv : vertInfo)    // For each of the current Vertex
+            {
+                // TODO: Possibility to check for paths before adding it
+                
+                prob += (double) ((double) bigv.degree) / 
+                        ((double) (2.0d * numEdges) - ignore);
+                
+                if(randNum <= prob) // add edge time
+                {
+                    // Here be the check 4 the edge properties (if needed)
+                    GraphPath gp = new GraphPath(newV);
+                    ArrayList<int[]> oldlimits = pathCalc(gp,0,0,bigv.vert,g);
+                    if(oldlimits.isEmpty())
+                    {
+                        int lb = rand.nextInt(51);
+                        int ub = lb + rand.nextInt(21);
+                        g.addEdge(newV, bigv.vert, lb, ub);
+                    }
+                    else    // TODO: combine the limits to a single limit!
+                    {
+                        int[] lbub = oldlimits.get(0);
+                        g.addEdge(newV, bigv.vert, lbub[0], lbub[1]);
+                    }
+                    // find the proper values for these plox!
+                    ignore += bigv.degree;
+                    bigv.degree++;
+                    nbv.degree++;
+                    add++;
+                    
+                    break; // break out to while loop (next edge if there are)
+                }
+            }
+        }
+        numEdges += add;
+    }
+    
+    private ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, Graph graph)
+    {
+        int dlb,dub;
+        ArrayList<int[]> pathLbUbs = new ArrayList<>();
+        // combine generatePaths & propagateWeights
+        LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(g.getLastV());
+        
+         if(edgeExp == null)
+            return pathLbUbs; // dead end!
+        for(DEdge de : edgeExp)
+        {
+            if(!g.edgeUsed(de))
+            {
+                g.addStep(de, de.getEnd());
+                dlb = de.getLowerb();
+                dub = de.getUpperb();
+                lb += dlb;
+                ub += dub;
+                if(de.getEnd().equals(end))
+                {
+                    int[] lbub = new int[2];
+                    lbub[0] = lb;
+                    lbub[1] = ub;
+                    pathLbUbs.add(lbub);
+                }
+                ArrayList<int[]> returnedLbUbs;
+                if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
+                {
+                    returnedLbUbs = pathCalc(g,lb,ub, end, graph);
+                    pathLbUbs.addAll(returnedLbUbs);
+                }
+                g.removeLast();
+            }
+        }
+        
+        return pathLbUbs; 
     }
     
 }
