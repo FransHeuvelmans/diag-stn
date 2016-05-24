@@ -88,6 +88,7 @@ public class Diagnosis
      */
     public void printDiagnosis()
     {
+        ArrayList<String> problemEdges = new ArrayList();
         System.out.print("Delta = {");
         for(DEdge de: edges)
         {
@@ -97,8 +98,21 @@ public class Diagnosis
                 System.out.print("d" + de.getStart().getName() + "," + de.getEnd().getName());
                 System.out.print(" \u2208 [" + chngs[0] + "," + chngs[1] + "] ");
             }
+            
+            if(de.possibleConProblem())
+                problemEdges.add("d" + de.getStart().getName() + "," + de.getEnd().getName());
         }
         System.out.print("d-rest = [0,0]}\n");
+        if(!problemEdges.isEmpty())
+        {
+            System.out.print("Warning!: Edges ");
+            for(String s : problemEdges)
+            {
+                System.out.print(s + " ");
+            }
+            System.out.print("have a possibility to become inconsistent when combining changes\n");
+        }
+        
     }
     
     /**

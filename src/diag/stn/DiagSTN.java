@@ -50,7 +50,7 @@ public class DiagSTN
         // testCase1();
         // testCase2();
         // testCase3();
-        readAndProcess("/home/frans/NetBeansProjects/diag-stn/test/Data/partConsistent.yml");
+         readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
     }
     
     public static void readAndProcess(String file)

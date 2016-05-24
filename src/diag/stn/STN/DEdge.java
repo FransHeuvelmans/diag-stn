@@ -26,6 +26,7 @@ public class DEdge
     private Vertex start, end;
     private int plowerbound, pupperbound; // predicted lower + upper
     private ArrayList<int[]> posChanges; // only use int[2] for lb/ub change
+    private boolean hazard;
     
     /**
      * Constructor of a separate directed edge
@@ -37,6 +38,7 @@ public class DEdge
         start = s;
         end = e;
         posChanges = new ArrayList<>();
+        hazard = false;
     }
     
     /**
@@ -53,6 +55,7 @@ public class DEdge
         plowerbound = lb;
         pupperbound = ub;
         posChanges = new ArrayList<>();
+        hazard = false;
     }
     
     /**
@@ -68,6 +71,16 @@ public class DEdge
         posCha[0] = lowerboundChange; // for now assume that both can be pos/neg
         posCha[1] = upperboundChange; // and no checks !
         posChanges.add(posCha);
+    }
+    
+    /**
+     * Set this to include output to the user to warn when applying a diagnosis
+     * for a possible inconsistency.
+     * @param problem 
+     */
+    public void setPossibleConProblem(boolean problem)
+    {
+        this.hazard = problem;
     }
     
     /**
@@ -141,6 +154,16 @@ public class DEdge
     public int getUpperb()
     {
         return pupperbound;
+    }
+    
+    /**
+     * Is there a possible consistency error when changing this edge in 
+     * combination with other changes in the network
+     * @return boolean which is true if there is a possibility
+     */
+    public boolean possibleConProblem()
+    {
+        return hazard;
     }
     
     

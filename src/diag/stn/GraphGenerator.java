@@ -222,4 +222,22 @@ public class GraphGenerator
         return pathLbUbs; 
     }
     
+    public GraphObs generatePlanlikeGraph(int linelb, int lineub, int maxlinecon, int maxcon)
+    {
+        // See idea 23 May
+        
+        // init: calc the Random.nextint and the fixed addition
+        
+        // Calc a full line and add it to the graph
+        
+        // if there are more lines add it to between 1 and maxlinecon other lines
+        // for each connection, connect with between 1 and maxcon vertices of the other
+        // line
+        
+        // finally add (small) observations (maybe within lines) that are correct
+        
+        // add big obs that are incorrect -> diagnosis.
+        return null;
+    }
+    
 }
