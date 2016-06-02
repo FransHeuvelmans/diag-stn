@@ -21,6 +21,7 @@ import java.lang.Math;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
@@ -32,13 +33,15 @@ import java.util.Map;
  */
 public class Analyst
 {
-    private Graph graph;
-    private ArrayList<Observation> observations;
-    private Map<Vertex, Integer> fixedTimes; // add a 0/time point to any vertex
-    private Map<Observation, LinkedHashSet<GraphPath>> obsPaths;
-    private ArrayList<Diagnosis> diagnosisList;
+    protected Graph graph;
+    protected ArrayList<Observation> observations;
+    protected Map<Vertex, Integer> fixedTimes; // add a 0/time point to any vertex
+    protected Map<Observation, LinkedHashSet<GraphPath>> obsPaths;
+    protected ArrayList<Diagnosis> diagnosisList;
     
-    private Map<GraphPath, int[]> diffStore; // Need to store changes before applying to the path
+    protected Map<GraphPath, int[]> diffStore; // Need to store changes before applying to the path
+    
+    protected LinkedHashSet<Observation> inconsistent;
     
     
     // Each observation might have multiple paths connected
@@ -167,8 +170,11 @@ public class Analyst
                     intersect[1] = intersect[1] < ub ? intersect[1] : ub;
                     if((lb > intersect[1]) || (ub < intersect[0]))
                     {
-                        System.err.println("Inconsistent path found!");
-                        // Abort ??
+                        System.out.println("Inconsistent path found!");
+                        if(inconsistent == null)
+                            inconsistent = new LinkedHashSet();
+                        if(!inconsistent.contains(o))
+                            inconsistent.add(o);
                     }
                 }
                 
@@ -190,7 +196,6 @@ public class Analyst
                 }
                 
                 //redone loop
-                
                 int[] change = new int[2];
                 for(int m = 0; m < paths.length; m++)
                 {
@@ -230,6 +235,23 @@ public class Analyst
      */
     public Diagnosis[] generateDiagnosis()
     {
+        // First repair possible inconsistent observations
+        if(inconsistent != null)
+        {
+            System.out.println("Found inconsistent paths, will proceed with"
+                    + " repair suggestions");
+            Iterator<Observation> incIter = inconsistent.iterator();
+            while(incIter.hasNext())
+            {
+                Observation incObs = incIter.next();
+                // TODO: fix some observation here!!!!
+                incObs.fixneeded = false;
+            }
+            
+            // for now lets not do both 
+            return null;
+        }
+        
         LinkedList<GraphPath> needDiag = new LinkedList<>();
         for(Observation ob: observations)
         {

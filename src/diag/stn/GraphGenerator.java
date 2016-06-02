@@ -19,6 +19,7 @@ import diag.stn.STN.*;
 import diag.stn.analyze.GraphPath;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -30,7 +31,7 @@ public class GraphGenerator
 {
     
     private int id; // stores Vertex id & names
-    private ArrayList<BuildVertex> vertInfo; // stores degrees
+    private ArrayList<BuildVertex> vertInfo; // stores degrees & Vertices baby please
     private int numEdges;
     
     /**
@@ -54,8 +55,19 @@ public class GraphGenerator
      * have many incoming!)
      * @return filled Graph
      */
-    public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax)
+    public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax, int falseObs, int trueObs)
     {
+        if(falseObs < 1)
+        {
+            System.err.println("# of false observations needs to be positive");
+            falseObs = 1; // can't use a GraphObs with no observations
+        }
+        if(trueObs < 0)
+        {
+            System.err.println("# of true observations needs to be non-negative");
+            trueObs = 0;
+        }
+        
         Random rand = new Random();
         GraphObs grOb = new GraphObs();
         vertInfo = new ArrayList();
@@ -117,6 +129,53 @@ public class GraphGenerator
          * one or multiple obs get changed and those can be compared to the algo
          * output.
          */
+        
+        grOb.observations = new LinkedList();
+        
+        while(falseObs > 0)
+        {
+            // Since its new to old try to get a path between 2 by trialNerror
+            int half = vertInfo.size() /2;
+            BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
+            BuildVertex toV = vertInfo.get(rand.nextInt(half));
+            GraphPath startPath = new GraphPath(fromV.vert);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            if(!boundsFound.isEmpty())
+            { // there is actually a path!
+                // TODO Calc proper lb & ub !!!!
+                Observation ob = new Observation(fromV.vert, toV.vert, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                grOb.observations.add(ob);
+                falseObs--;
+            }
+        }
+        trueObsAdd:
+        while(trueObs > 0)
+        {
+            // Since its new to old try to get a path between 2 by trialNerror
+            int half = vertInfo.size() /2;
+            BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
+            BuildVertex toV = vertInfo.get(rand.nextInt(half));
+            
+            
+            for(Observation fObs : grOb.observations)
+            {
+                if(fObs.startV.equals(fromV.vert))
+                {
+                    if(fObs.endV.equals(toV.vert))
+                        continue trueObsAdd; // yep, its the quickNDirty
+                }
+            }
+            
+            GraphPath startPath = new GraphPath(fromV.vert);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            if(!boundsFound.isEmpty())
+            { // there is actually a path!
+                // if it is fully correct all paths should be the same... !!!!
+                Observation ob = new Observation(fromV.vert, toV.vert, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                grOb.observations.add(ob);
+                trueObs--;
+            }
+        }
         
         return grOb;
     }
