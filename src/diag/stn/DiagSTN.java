@@ -49,8 +49,9 @@ public class DiagSTN
         
         // testCase1();
         // testCase2();
-         testCase3();
+        // testCase3();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
+        runRandomGen();
     }
     
     public static void readAndProcess(String file)
@@ -116,7 +117,7 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(150, 2, false, 2, 0);
+        GraphObs strct = gen.generateBAGraph(200, 4, true, 3, 1);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -124,7 +125,9 @@ public class DiagSTN
         }
         
         al.generatePaths();
+        //al.printPaths();
         al.propagateWeights();
+        //al.printWeights();
         al.generateDiagnosis();
         al.printDiagnosis();
     }

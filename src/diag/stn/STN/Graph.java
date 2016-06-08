@@ -33,6 +33,8 @@ public class Graph
     private Map<Vertex, LinkedHashSet<DEdge>> map = new HashMap(); 
     // Extra map with all the edges from a Vertex
     
+    private boolean checkNegativeEdges;
+    
     /**
      * Generate empty Graph
      */
@@ -40,6 +42,8 @@ public class Graph
     {
         nodes = new LinkedHashSet<>();
         edges = new LinkedHashSet<>();
+        
+        checkNegativeEdges = true;
         
         // a hashmap which gives all edges which start at
         // a particular node
@@ -61,6 +65,23 @@ public class Graph
             System.err.println("Edge cannot be added, one of the vertices is not part of the network");
             return;
         }
+        if(lowerbound > upperbound)
+            System.err.println("incorrect bounds: lb > ub");
+        
+        
+        // Negative edges can be reversed in STN
+        if(checkNegativeEdges && (lowerbound < 0 && upperbound < 0))
+        {
+            Vertex temp = start;
+            start = end;
+            end = temp;
+            int tub = upperbound;
+            int tlb = lowerbound;
+            lowerbound = Math.abs(tub);
+            upperbound = Math.abs(tlb);
+        }
+        
+        
         DEdge e = new DEdge(start, end, lowerbound, upperbound);
         edges.add(e);
         LinkedHashSet<DEdge> adjacent = map.get(start);
@@ -78,6 +99,11 @@ public class Graph
     public void addVertex(Vertex v)
     {
         nodes.add(v);
+    }
+    
+    public void reverseNegativeEdge(boolean checkForNeg)
+    {
+        checkNegativeEdges = checkForNeg;
     }
     
     /**
@@ -152,5 +178,10 @@ public class Graph
         }
         System.err.println("Vertex not found, id: " + id);
         return null;
+    }
+    
+    public boolean getNegativeEdgeCheck()
+    {
+        return checkNegativeEdges;
     }
 }

@@ -18,6 +18,7 @@ package diag.stn;
 import diag.stn.STN.*;
 import diag.stn.analyze.GraphPath;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -34,6 +35,8 @@ public class GraphGenerator
     private ArrayList<BuildVertex> vertInfo; // stores degrees & Vertices baby please
     private int numEdges;
     
+    private int nodes, edges;
+    
     /**
      * Struct like combination of the Graph and its Observations
      */
@@ -43,7 +46,7 @@ public class GraphGenerator
         public List<Observation> observations;
     }
     
-    public class BuildVertex
+    private class BuildVertex
     {
         public Vertex vert;
         public int degree;
@@ -79,13 +82,15 @@ public class GraphGenerator
         
         id = 0;
         Graph gr = new Graph();
+        gr.reverseNegativeEdge(false);
         Vertex first = new Vertex(id);
         gr.addVertex(first);
         id++;
         Vertex second = new Vertex(id);
+        gr.addVertex(second);
         id++;
-        int lb = rand.nextInt(51);
-        int ub = lb + rand.nextInt(21);
+        int lb = rand.nextInt(20);
+        int ub = lb + rand.nextInt(60);
         gr.addEdge(second, first, lb, ub);
         // Keep this direction for all the vertices to add (new to old)
         BuildVertex bv = new BuildVertex();
@@ -97,6 +102,9 @@ public class GraphGenerator
         bv.degree = 1;
         vertInfo.add(bv);
         numEdges = 1;  
+        
+        nodes = 2;
+        edges = 1;
         
         if(size < 3)
         {
@@ -113,8 +121,9 @@ public class GraphGenerator
         }
         for(int i = 2; i < size; i++) // already 2 vertices
         {
-            int links = Math.min(i + 1, linksPerStep);
+            int links = Math.min(i, linksPerStep);
             BAaddVertex(gr, links, onlymax);
+            System.out.println("Nodes added: " + nodes + " edges added: " + edges);
         }
         
         grOb.graph = gr;
@@ -132,12 +141,24 @@ public class GraphGenerator
         
         grOb.observations = new LinkedList();
         
+        falseObsAdd:
         while(falseObs > 0)
         {
             // Since its new to old try to get a path between 2 by trialNerror
             int half = vertInfo.size() /2;
             BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
             BuildVertex toV = vertInfo.get(rand.nextInt(half));
+            
+            for(Observation fObs : grOb.observations)
+            {
+                if(fObs.startV.equals(fromV.vert))
+                {
+                    if(fObs.endV.equals(toV.vert))
+                        continue falseObsAdd; // yep, its the quickNDirty
+                    // Can't have a certain obs already in use
+                }
+            }
+            
             GraphPath startPath = new GraphPath(fromV.vert);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
             if(!boundsFound.isEmpty())
@@ -157,12 +178,14 @@ public class GraphGenerator
             BuildVertex toV = vertInfo.get(rand.nextInt(half));
             
             
-            for(Observation fObs : grOb.observations)
+            for(Observation aObs : grOb.observations)
             {
-                if(fObs.startV.equals(fromV.vert))
+                if(aObs.startV.equals(fromV.vert))
                 {
-                    if(fObs.endV.equals(toV.vert))
+                    if(aObs.endV.equals(toV.vert))
                         continue trueObsAdd; // yep, its the quickNDirty
+                    // Can't have a certain (any) obs already in use (be it
+                    // either false or true)
                 }
             }
             
@@ -190,7 +213,9 @@ public class GraphGenerator
         BuildVertex nbv = new BuildVertex();
         nbv.degree = 0;
         nbv.vert = newV;
-        vertInfo.add(nbv); // should be @ location "id" ...
+        
+        // Bit of double bookkeeping here but for now..
+        HashSet<Vertex> usedToVertices = new HashSet();       
         
         // Decide how many connections to make 
         if(!onlymax)
@@ -200,47 +225,59 @@ public class GraphGenerator
             // We allow 0 links, for the network to get more than 1 end point!
         }
         
-        int ignore = 0;
+        //int ignore = 0;
+        int tries = 300; // 300 random tries to add an edge, if it cant be done it cant be done!
         int add = 0;
+        LinkedList<BuildVertex> vertexDegPlus = new LinkedList();
         while(links>0)  // While there are new edges needed, addmore!
         {
             double prob = 0;    // the odds
             double randNum = rand.nextDouble();
             
+            addEdge:
             for(BuildVertex bigv : vertInfo)    // For each of the current Vertex
             {
                 // TODO: Possibility to check for paths before adding it
                 
                 prob += (double) ((double) bigv.degree) / 
-                        ((double) (2.0d * numEdges) - ignore);
+                        ((double) (2.0d * numEdges)); // (none to ignore!)
                 
                 if(randNum <= prob) // add edge time
                 {
-                    // Here be the check 4 the edge properties (if needed)
-                    GraphPath gp = new GraphPath(newV);
-                    ArrayList<int[]> oldlimits = pathCalc(gp,0,0,bigv.vert,g);
-                    if(oldlimits.isEmpty())
-                    {
-                        int lb = rand.nextInt(51);
-                        int ub = lb + rand.nextInt(21);
-                        g.addEdge(newV, bigv.vert, lb, ub);
-                    }
-                    else    // TODO: combine the limits to a single limit!
-                    {
-                        int[] lbub = oldlimits.get(0);
-                        g.addEdge(newV, bigv.vert, lbub[0], lbub[1]);
-                    }
-                    // find the proper values for these plox!
-                    ignore += bigv.degree;
-                    bigv.degree++;
-                    nbv.degree++;
-                    add++;
+                    // Cant have multiple edges between 2 verts in STN
+                    if(usedToVertices.contains(bigv.vert))
+                        break;
                     
-                    break; // break out to while loop (next edge if there are)
+                    int lb,ub;
+                    
+                    lb = 0;
+                    ub = 20 + rand.nextInt(60);
+                    g.addEdge(newV, bigv.vert, lb, ub);
+                    
+                    
+                    vertexDegPlus.add(bigv);
+                    vertexDegPlus.add(nbv);
+                    add++;
+                    links--;
+                    usedToVertices.add(bigv.vert);
+                    
+                    edges++;
+                    break; // break out of for loop, time for next edge!
                 }
             }
+            if(tries < 1)
+                break;
         }
+        // Increment the number of edges and vertex-degrees after all edges have
+        // been added (so the edge addition does not influence itself)
         numEdges += add;
+        for(BuildVertex buv : vertexDegPlus)
+            buv.degree++; 
+        
+        // Finally add the new buildVertex to vertexInfo
+        vertInfo.add(nbv); // should be @ location "id" ...
+        
+        nodes++;
     }
     
     private ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, Graph graph)
@@ -281,7 +318,7 @@ public class GraphGenerator
         return pathLbUbs; 
     }
     
-    public GraphObs generatePlanlikeGraph(int linelb, int lineub, int maxlinecon, int maxcon)
+    public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, int maxlinecon, int maxcon)
     {
         // See idea 23 May
         
@@ -296,7 +333,84 @@ public class GraphGenerator
         // finally add (small) observations (maybe within lines) that are correct
         
         // add big obs that are incorrect -> diagnosis.
-        return null;
+        if(line < 1)
+        {
+            System.out.println("Cant have negative # paths");
+            line = 1;
+        }
+        if(linelb < 1)
+        {
+            System.out.println("Cant have negative # nodes");
+            linelb = 1;
+        }
+        if(lineub < linelb)
+        {
+            System.out.println("Upperbound on # nodes per path cant "
+                    + "be less than lowerbound");
+            lineub = linelb;
+        }
+        if(maxlinecon < 0)
+        {
+            System.out.println("# line connections can't be negative");
+            maxlinecon = 0;
+        }
+        if(maxcon < 0)
+        {
+            System.out.println("# line connections can't be negative");
+            maxlinecon = 0;
+        }
+        //init
+        Random rand = new Random();
+        GraphObs grOb = new GraphObs();
+        // no vertInfo needed
+        id = 0;
+        numEdges = 0;
+        Graph gr = new Graph();        
+        
+        int randNod = linelb - lineub;
+        int lineVertices, ub, lb;
+        while(line > 0)
+        {
+            // add a line (adaline!)
+            lineVertices = linelb + rand.nextInt(randNod+1);
+            Vertex firstV = new Vertex(id);
+            gr.addVertex(firstV);
+            id++;
+            Vertex prevV = firstV;
+            lineVertices--;
+            while(lineVertices > 0)
+            {
+                // add a vertex
+                Vertex nextV = new Vertex(id);
+                gr.addVertex(nextV);
+                id++;
+                
+                // add an edge
+                lb = rand.nextInt(51);
+                ub = lb + rand.nextInt(21);
+                gr.addEdge(nextV, prevV, lb, ub); // WARNING!! from next to prev again!
+                
+                // onto the next
+                prevV = nextV;
+                lineVertices--;
+            }
+            // Connect dem lines!!
+            int lineConnects = rand.nextInt(maxlinecon) + 1;
+            while(lineConnects > 0)
+            {
+                // Todo lalala
+            }
+            
+            // onto the next
+            line--;
+        }
+        return grOb;
+        
+        /**
+         * Need a special structure to store lines in (can simply connect to a random
+         * line no special selection/probabilities needed BUT still need to know all
+         * the vertices of the separate lines so -> structure!
+         */
     }
     
 }
