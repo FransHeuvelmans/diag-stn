@@ -167,6 +167,17 @@ public class GraphGenerator
                 Observation ob = new Observation(fromV.vert, toV.vert, boundsFound.get(0)[0], boundsFound.get(0)[1]);
                 grOb.observations.add(ob);
                 falseObs--;
+                /*
+                TODO: Prob. -> no changes in bounds are added but still there
+                is some discrepancy between the propagated values here and the ones
+                from Analyst so there is some problem!
+                Current version only finds the first path and uses that value
+                (which is not the correct value for a consistent path)
+                */
+//                System.out.println("For Observation " + fromV.vert.getID() +
+//                            " to " + toV.vert.getID());
+//                System.out.println("Generating LB:" + boundsFound.get(0)[0] + 
+//                            " UB:" + boundsFound.get(0)[1]);
             }
         }
         trueObsAdd:
@@ -197,6 +208,10 @@ public class GraphGenerator
                 Observation ob = new Observation(fromV.vert, toV.vert, boundsFound.get(0)[0], boundsFound.get(0)[1]);
                 grOb.observations.add(ob);
                 trueObs--;
+//                System.out.println("For Observation " + fromV.vert.getID() +
+//                            " to " + toV.vert.getID());
+//                System.out.println("Generating LB:" + boundsFound.get(0)[0] + 
+//                            " UB:" + boundsFound.get(0)[1]);
             }
         }
         
@@ -318,21 +333,20 @@ public class GraphGenerator
         return pathLbUbs; 
     }
     
-    public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, int maxlinecon, int maxcon)
+    /**
+     * Create a Graph that resembles multiple plans that have a few connections
+     * @param line number of plans coming together
+     * @param linelb lowerbound on plansize
+     * @param lineub upperbound on plansize
+     * @param maxLineCon how much the plans are interconnected 
+     * @param maxVertCon how much 2 plans can be interconnected
+     * @param falseObs how many false observations are added
+     * @param trueObs how many true observations are added
+     * @return 
+     */
+    public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, 
+            int maxLineCon, int maxVertCon, int falseObs, int trueObs)
     {
-        // See idea 23 May
-        
-        // init: calc the Random.nextint and the fixed addition
-        
-        // Calc a full line and add it to the graph
-        
-        // if there are more lines add it to between 1 and maxlinecon other lines
-        // for each connection, connect with between 1 and maxcon vertices of the other
-        // line
-        
-        // finally add (small) observations (maybe within lines) that are correct
-        
-        // add big obs that are incorrect -> diagnosis.
         if(line < 1)
         {
             System.out.println("Cant have negative # paths");
@@ -349,15 +363,15 @@ public class GraphGenerator
                     + "be less than lowerbound");
             lineub = linelb;
         }
-        if(maxlinecon < 0)
+        if(maxLineCon < 0)
         {
-            System.out.println("# line connections can't be negative");
-            maxlinecon = 0;
+            System.out.println("# path connections can't be negative");
+            maxLineCon = 0;
         }
-        if(maxcon < 0)
+        if(maxVertCon < 0)
         {
-            System.out.println("# line connections can't be negative");
-            maxlinecon = 0;
+            System.out.println("# Vertex connections per path can't be negative");
+            maxVertCon = 0;
         }
         //init
         Random rand = new Random();
@@ -366,6 +380,7 @@ public class GraphGenerator
         id = 0;
         numEdges = 0;
         Graph gr = new Graph();        
+        LinkedList<Vertex>[] lines = new LinkedList[line];
         
         int randNod = linelb - lineub;
         int lineVertices, ub, lb;
@@ -378,39 +393,159 @@ public class GraphGenerator
             id++;
             Vertex prevV = firstV;
             lineVertices--;
+            lines[line-1] = new LinkedList(); // so from arrayIndex = line -> 0
+            lines[line-1].add(firstV);
             while(lineVertices > 0)
             {
                 // add a vertex
                 Vertex nextV = new Vertex(id);
                 gr.addVertex(nextV);
                 id++;
+                lines[line-1].add(nextV);
                 
                 // add an edge
-                lb = rand.nextInt(51);
-                ub = lb + rand.nextInt(21);
+                lb = 0; // TODO! also the dirty solution!!
+                ub = rand.nextInt(120);
                 gr.addEdge(nextV, prevV, lb, ub); // WARNING!! from next to prev again!
                 
                 // onto the next
                 prevV = nextV;
                 lineVertices--;
             }
-            // Connect dem lines!!
-            int lineConnects = rand.nextInt(maxlinecon) + 1;
-            while(lineConnects > 0)
-            {
-                // Todo lalala
-            }
             
             // onto the next
             line--;
         }
-        return grOb;
+        for(int l = 0; l < lines.length; l++)
+        {
+            // Connect dem lines!!
+            int lineConnects = rand.nextInt(maxLineCon) + 1;
+            LinkedList<Vertex> conLine = lines[l];
+            while(lineConnects > 0)
+            {
+                int linePick = rand.nextInt(lines.length);
+                if(linePick == l)
+                    continue;
+                int vertConnect = rand.nextInt(maxVertCon) + 1;
+                while(vertConnect > 0)
+                {
+                    int vertStart = rand.nextInt(conLine.size());
+                    int space = lines[linePick].size() - vertStart;
+                    if(space < 1)
+                        continue;
+                    int vertEnd = rand.nextInt(space) + vertStart;
+                    
+                    lb = 0; // TODO! also the dirty solution!!
+                    ub = rand.nextInt(30);
+                    gr.addEdge(conLine.get(vertStart),
+                            (lines[linePick].get(vertEnd)), lb, ub);
+                    
+                    vertConnect--;
+                }
+                linePick--;
+            }
+        }
         
-        /**
-         * Need a special structure to store lines in (can simply connect to a random
-         * line no special selection/probabilities needed BUT still need to know all
-         * the vertices of the separate lines so -> structure!
-         */
+        // time to bruteforce some observations with this Graph...
+         grOb.observations = new LinkedList();
+        
+        falseObsAdd:
+        while(falseObs > 0)
+        {
+            int startLine, endLine, startV, endV;
+            startLine = rand.nextInt(lines.length);
+            endLine = rand.nextInt(lines.length);
+            startV = rand.nextInt(4);
+            if(startV >= lines[startLine].size())
+                continue falseObsAdd;
+            endV = lines[endLine].size() - rand.nextInt(4);
+            if(endV < 0)
+                continue falseObsAdd;
+            
+            Vertex fromV, toV;
+            fromV = lines[startLine].get(startV);
+            toV = lines[endLine].get(endV);
+            
+            for(Observation fObs : grOb.observations)
+            {
+                if(fObs.startV.equals(fromV))
+                {
+                    if(fObs.endV.equals(toV))
+                        continue falseObsAdd; // yep, its the quickNDirty
+                    // Can't have a certain obs already in use
+                }
+            }
+            
+            GraphPath startPath = new GraphPath(fromV);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
+            if(!boundsFound.isEmpty())
+            { // there is actually a path!
+                // TODO PROBLEM, SEE OTHER GEN !!!!
+                Observation ob = new Observation(fromV, toV, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                grOb.observations.add(ob);
+                falseObs--;
+            }
+        }
+        trueObsAdd:
+        while(trueObs > 0)
+        {
+            int someL, startV, endV;
+            someL = rand.nextInt(lines.length);
+            startV = rand.nextInt(4);
+            if(startV >= lines[someL].size())
+                continue trueObsAdd;
+            endV = lines[someL].size() - rand.nextInt(4);
+            if(endV < 0)
+                continue trueObsAdd;
+            
+            Vertex fromV, toV;
+            fromV = lines[someL].get(startV);
+            toV = lines[someL].get(endV);
+            
+            for(Observation aObs : grOb.observations)
+            {
+                if(aObs.startV.equals(fromV))
+                {
+                    if(aObs.endV.equals(toV))
+                        continue trueObsAdd; // yep, its the quickNDirty
+                    // Can't have a certain (any) obs already in use (be it
+                    // either false or true)
+                }
+            }
+            
+            GraphPath startPath = new GraphPath(fromV);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
+            if(!boundsFound.isEmpty())
+            { // there is actually a path!
+                // if it is fully correct all paths should be the same... !!!!
+                Observation ob = new Observation(fromV, toV, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                grOb.observations.add(ob);
+                trueObs--;
+            }
+        }
+        return grOb;
+    }
+    
+    /**
+     * Make a problem Single Origin. A vertex is added and [0,0] edges are added
+     * to the starting points of the observations.
+     * @param grObs Graph + Observations
+     * @return the same reference (mutates input!)
+     */
+    public GraphObs makeSO(GraphObs grObs)
+    {
+        // Warning, doesn't make a proper copy simply changes the handed object
+        // and has been made for simulation perposes only!
+        
+        Vertex startSync = new Vertex(Integer.MAX_VALUE,"S");
+        grObs.graph.addVertex(startSync);
+        for(Observation ob : grObs.observations)
+        {
+            Vertex oldstart = ob.startV;
+            grObs.graph.addEdge(startSync, oldstart, 0, 0);
+            ob.startV = startSync;
+        }
+        return grObs;
     }
     
 }

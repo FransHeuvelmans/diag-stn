@@ -33,6 +33,9 @@ import java.util.Map;
  */
 public class SOAnalyst extends Analyst
 {
+    HashMap<GraphPath,Boolean> smallerThanObs;
+    HashMap<GraphPath,Boolean> consistencyHazard;
+    HashMap<GraphPath,Integer> predSizes;
     
     public SOAnalyst(Graph g)
     {
@@ -73,6 +76,11 @@ public class SOAnalyst extends Analyst
                         + "different starting vertices");
             }
         }
+        
+        smallerThanObs = new HashMap();
+        consistencyHazard = new HashMap();
+        predSizes = new HashMap();
+        
         GraphPath g = new GraphPath(ob.startV);
         Integer strtVal = fixedTimes.get(ob.startV); // lets hope that o.startV == p.getStepV(0)
         int lb,ub;
@@ -86,8 +94,62 @@ public class SOAnalyst extends Analyst
             lb = 0;
             ub = 0;
         }
-        pathCalc(g, lb, ub);
+        pathCalc(g, lb, ub); // here the propagation occurs
         
+        for(Observation o : observations)
+        {
+            o.moreAccurate = false;
+            ob.fixneeded = false;
+            int[] intersect = new int[2];
+            
+            LinkedHashSet<GraphPath> pathsSet = obsPaths.get(o);
+            GraphPath[] paths = pathsSet.toArray(new GraphPath[pathsSet.size()]);
+            if(paths == null) 
+                continue;
+            for(int k = 0; k < paths.length; k++)
+            {
+                // iterate over combinations to see if there might be a problem
+                for(int l = k + 1; l < paths.length; l++)
+                {
+                    if(smallerThanObs.get(paths[k]) && smallerThanObs.get(paths[l]))
+                    {
+                        if((predSizes.get(paths[k]) + predSizes.get(paths[l])) < (o.endUb - o.endLb))
+                        {
+                            consistencyHazard.put(paths[k], Boolean.TRUE);
+                            consistencyHazard.put(paths[l], Boolean.TRUE);
+                        }
+                        else
+                        {
+                            consistencyHazard.put(paths[k], Boolean.FALSE);
+                            consistencyHazard.put(paths[l], Boolean.FALSE);
+                        }
+                    }
+                    else
+                    {
+                        consistencyHazard.put(paths[k], Boolean.FALSE);
+                        consistencyHazard.put(paths[l], Boolean.FALSE);
+                    }
+                }
+                
+                int[] lbub = diffStore.get(paths[k]);
+                int deltalb = o.endLb - lbub[0];
+                int deltaub = o.endUb - lbub[1];
+                int[] chng = new int[2];
+                chng[0] = Math.min(deltalb, deltaub);
+                chng[1] = Math.max(deltalb, deltaub);
+                if(chng[0] != 0 || chng[1] != 0)
+                    o.fixneeded = true;
+                for(int n=1; n < paths[k].stepSize(); n++)
+                {
+                    DEdge de = paths[k].getStepE(n);
+                    de.addPossibleChange(chng[0], chng[1]); 
+                    // store the possible changes
+                    if(consistencyHazard.get(paths[k]))
+                        de.setPossibleConProblem(true);
+                }
+            }
+            
+        }
         // TODO: Combination of changes for the different paths 
         // of an observation here (see Analyst for now)
     }
@@ -122,17 +184,25 @@ public class SOAnalyst extends Analyst
                 {
                     if(de.getEnd().equals(o.endV))
                     {
-                        LinkedHashSet<GraphPath> paths = obsPaths.get(o.startV);
+                        LinkedHashSet<GraphPath> paths = obsPaths.get(o);
                         if(paths == null) 
                         {
                             paths = new LinkedHashSet();
                             obsPaths.put(o, paths);
                         }
-                        paths.add(g.copy());
+                        GraphPath copyPath = g.copy(); // Need to use a copy from now
+                        paths.add(copyPath);
                         int[] lbub = new int[2];
                         lbub[0] = lb;
                         lbub[1] = ub;
-                        diffStore.put(g, lbub);
+                        int predSize = ub-lb;
+                        predSizes.put(copyPath, predSize);
+                        if(predSize < (o.endUb - o.endLb))
+                            smallerThanObs.put(copyPath, Boolean.TRUE);
+                        else
+                            smallerThanObs.put(copyPath, Boolean.FALSE);
+                        
+                        diffStore.put(copyPath, lbub);
                         // !!!! WARNING, STILL NEEDS CODE TO COMBINE CHANGES
                         // TO A PROPER lbub (for all paths on 1 obs)
                     }

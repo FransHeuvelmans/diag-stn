@@ -117,7 +117,7 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(200, 4, true, 3, 1);
+        GraphObs strct = gen.generateBAGraph(10, 3, true, 3, 1);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -125,9 +125,9 @@ public class DiagSTN
         }
         
         al.generatePaths();
-        //al.printPaths();
+        al.printPaths();
         al.propagateWeights();
-        //al.printWeights();
+        al.printWeights();
         al.generateDiagnosis();
         al.printDiagnosis();
     }

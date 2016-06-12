@@ -179,7 +179,7 @@ public class Analyst
                 }
                 
                 // comboLoop: if possible combo of predictions can become 
-                // inconsistent with a certain change
+                // inconsistent with a certain change (ie. combined size < obs)
                 for(int k = 0; k < paths.length; k++)
                 {
                     for(int l = k + 1; l < paths.length; l++)
@@ -209,6 +209,12 @@ public class Analyst
                         o.fixneeded = true;
                     
                     diffStore.put(paths[m], change);
+//                    System.out.println("For Observation " + o.startV.getID() +
+//                            " to " + o.endV.getID());
+//                    System.out.println("Storing obsLB:" + o.endLb + 
+//                            " pathLB:" + pathBounds[m][0] +
+//                            " obsUB:" + o.endUb +
+//                            " pathUB:" + pathBounds[m][1]);
                     
                     for(int n=1; n < paths[m].stepSize(); n++)
                     {
