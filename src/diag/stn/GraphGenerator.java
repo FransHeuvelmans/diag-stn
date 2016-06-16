@@ -161,10 +161,11 @@ public class GraphGenerator
             
             GraphPath startPath = new GraphPath(fromV.vert);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            int[] boufou = combinePaths(boundsFound);
             if(!boundsFound.isEmpty())
             { // there is actually a path!
                 // TODO Calc proper lb & ub !!!!
-                Observation ob = new Observation(fromV.vert, toV.vert, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                Observation ob = new Observation(fromV.vert, toV.vert, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
                 falseObs--;
                 /*
@@ -202,10 +203,11 @@ public class GraphGenerator
             
             GraphPath startPath = new GraphPath(fromV.vert);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            int[] boufou = combinePaths(boundsFound);
             if(!boundsFound.isEmpty())
             { // there is actually a path!
                 // if it is fully correct all paths should be the same... !!!!
-                Observation ob = new Observation(fromV.vert, toV.vert, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                Observation ob = new Observation(fromV.vert, toV.vert, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
                 trueObs--;
 //                System.out.println("For Observation " + fromV.vert.getID() +
@@ -331,6 +333,20 @@ public class GraphGenerator
         }
         
         return pathLbUbs; 
+    }
+    
+    private int[] combinePaths(ArrayList<int[]> paths)
+    {
+        // Takes the Intersection
+        int[] finalbounds = paths.remove(paths.size()-1); // take last
+        for(int[] p: paths)
+        {
+            if(p[0] > finalbounds[0])
+                finalbounds[0] = p[0];
+            if(p[1] < finalbounds[1])
+                finalbounds[1] = p[1];
+        }
+        return finalbounds;
     }
     
     /**
@@ -478,10 +494,11 @@ public class GraphGenerator
             
             GraphPath startPath = new GraphPath(fromV);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
+            int[] boufou = combinePaths(boundsFound);
             if(!boundsFound.isEmpty())
             { // there is actually a path!
                 // TODO PROBLEM, SEE OTHER GEN !!!!
-                Observation ob = new Observation(fromV, toV, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                Observation ob = new Observation(fromV, toV, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
                 falseObs--;
             }
@@ -515,10 +532,11 @@ public class GraphGenerator
             
             GraphPath startPath = new GraphPath(fromV);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
+            int[] boufou = combinePaths(boundsFound);
             if(!boundsFound.isEmpty())
             { // there is actually a path!
                 // if it is fully correct all paths should be the same... !!!!
-                Observation ob = new Observation(fromV, toV, boundsFound.get(0)[0], boundsFound.get(0)[1]);
+                Observation ob = new Observation(fromV, toV, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
                 trueObs--;
             }

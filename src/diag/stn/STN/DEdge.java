@@ -121,6 +121,17 @@ public class DEdge
     }
     
     /**
+     * Makes sure that this edge will not/ can not be changed.
+     * It will not be part of a delta in a possible diagnosis.
+     */
+    public void makeContigent()
+    {
+        addPossibleChange(0,0);
+        // By having a possible change of [0,0] an edge will not be changed in
+        // the final diagnosis, all other changes added to this edge will fail
+    }
+    
+    /**
      * Get the start vertex
      * @return starting vertex object
      */

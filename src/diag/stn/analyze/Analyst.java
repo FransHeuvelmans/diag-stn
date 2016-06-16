@@ -168,7 +168,7 @@ public class Analyst
                     
                     intersect[0] = intersect[0] > lb ? intersect[0] : lb;
                     intersect[1] = intersect[1] < ub ? intersect[1] : ub;
-                    if((lb > intersect[1]) || (ub < intersect[0]))
+                    if(((lb > intersect[1]) || (ub < intersect[0])) && !DiagSTN.IGNOREINCONSIST)
                     {
                         System.out.println("Inconsistent path found!");
                         if(inconsistent == null)
@@ -241,8 +241,9 @@ public class Analyst
      */
     public Diagnosis[] generateDiagnosis()
     {
+        LinkedList<GraphPath> needDiag = new LinkedList<>();
         // First repair possible inconsistent observations
-        if(inconsistent != null)
+        if(!DiagSTN.IGNOREINCONSIST && inconsistent != null) 
         {
             System.out.println("Found inconsistent paths, will proceed with"
                     + " repair suggestions");
@@ -250,24 +251,29 @@ public class Analyst
             while(incIter.hasNext())
             {
                 Observation incObs = incIter.next();
+                LinkedHashSet<GraphPath> pathSet = obsPaths.get(incObs);
+                for(GraphPath p : pathSet)
+                    needDiag.add(p);
                 // TODO: fix some observation here!!!!
-                incObs.fixneeded = false;
+                
             }
             
-            // for now lets not do both 
-            return null;
+            // for now lets not do both -> fix inconsistencies before
+            // trying to fix a normal network (see example) because inconsistency
+            // might point to a faulty model (use ignoreInconsistency)
         }
-        
-        LinkedList<GraphPath> needDiag = new LinkedList<>();
-        for(Observation ob: observations)
+        else
         {
-            // if observation is wrong....
-            // ie if difference is 0 ????
-            if(ob.fixneeded)
+            for(Observation ob: observations)
             {
-                LinkedHashSet<GraphPath> pathSet = obsPaths.get(ob);
-                for(GraphPath p : pathSet)
-                    needDiag.add(p);    // faster way to copy?
+                // if observation is wrong....
+                // ie if difference is 0 ????
+                if(ob.fixneeded)
+                {
+                    LinkedHashSet<GraphPath> pathSet = obsPaths.get(ob);
+                    for(GraphPath p : pathSet)
+                        needDiag.add(p);    // faster way to copy?
+                }
             }
         }
         /**

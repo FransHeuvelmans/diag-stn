@@ -59,6 +59,19 @@ public class Graph
      */
     public void addEdge(Vertex start, Vertex end, int lowerbound, int upperbound)
     {
+        addEdge(start,end,lowerbound,upperbound,false);
+    }
+    
+    /**
+     * Create a new edge and add it to the Graph
+     * @param start Starting vertex of the edge
+     * @param end Ending vertex
+     * @param lowerbound lower bound on the time needed (cost)
+     * @param upperbound upper bound on the time needed (cost) 
+     * @param cont True if the edge must not change, false if it is a normal edge
+     */
+    public void addEdge(Vertex start, Vertex end, int lowerbound, int upperbound, boolean cont)
+    {
         // check if vertices exist! (are part of the network)
         if(!nodes.contains(start) || !nodes.contains(end))
         {
@@ -83,6 +96,8 @@ public class Graph
         
         
         DEdge e = new DEdge(start, end, lowerbound, upperbound);
+        if(cont)
+            e.makeContigent();
         edges.add(e);
         LinkedHashSet<DEdge> adjacent = map.get(start);
         if(adjacent==null) {

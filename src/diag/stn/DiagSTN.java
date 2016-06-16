@@ -35,6 +35,7 @@ import org.yaml.snakeyaml.*;
 public class DiagSTN
 {
     public static final boolean PRINTACC = true;
+    public static final boolean IGNOREINCONSIST = false;
     
     /**
      * @param args the command line arguments
