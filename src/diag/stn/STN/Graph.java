@@ -30,7 +30,8 @@ public class Graph
 {
     private LinkedHashSet<Vertex> nodes;
     private LinkedHashSet<DEdge> edges;
-    private Map<Vertex, LinkedHashSet<DEdge>> map = new HashMap(); 
+    private Map<Vertex, LinkedHashSet<DEdge>> map = new HashMap();
+    private Map<Vertex, LinkedHashSet<DEdge>> reverseMap;
     // Extra map with all the edges from a Vertex
     
     private boolean checkNegativeEdges;
@@ -48,6 +49,7 @@ public class Graph
         // a hashmap which gives all edges which start at
         // a particular node
         map = new HashMap();
+        reverseMap = new HashMap();
     }
     
     /**
@@ -100,11 +102,36 @@ public class Graph
             e.makeContigent();
         edges.add(e);
         LinkedHashSet<DEdge> adjacent = map.get(start);
-        if(adjacent==null) {
+        if(adjacent==null) 
+        {
             adjacent = new LinkedHashSet();
             map.put(start, adjacent);
         }
+        LinkedHashSet<DEdge> incoming = reverseMap.get(end);
+        if(incoming == null)
+        {
+            incoming = new LinkedHashSet();
+            reverseMap.put(end, incoming);
+        }
         adjacent.add(e);
+        incoming.add(e);
+    }
+    
+    public boolean removeEdge(DEdge de)
+    {
+        if(edges.contains(de))
+        {
+            edges.remove(de);
+            LinkedHashSet x = map.remove(de.getStart());
+            LinkedHashSet y = reverseMap.remove(de.getEnd());
+            if(x == null || y == null)
+                System.err.println("Edge wasnt fully dialed in on removal");
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
     
     /**
@@ -114,6 +141,37 @@ public class Graph
     public void addVertex(Vertex v)
     {
         nodes.add(v);
+    }
+    
+    /**
+     * Removes Vertex and all its edges from the graph
+     * @param v Vertex object that needs removal
+     * @return Vertex was present in graph or not
+     */
+    public boolean removeVertex(Vertex v)
+    {
+        boolean out = nodes.remove(v);
+        if(!out)
+            return false;
+        if(map.containsKey(v))
+        {
+            LinkedHashSet<DEdge> edgz = map.get(v);
+            for(DEdge e: edgz)
+            {
+                edges.remove(e);
+            }
+            map.remove(v);
+        }
+        if(reverseMap.containsKey(v))
+        {
+            LinkedHashSet<DEdge> edgz = reverseMap.get(v);
+            for(DEdge e: edgz)
+            {
+                edges.remove(e);
+            }
+            reverseMap.remove(v);
+        }
+        return true;
     }
     
     public void reverseNegativeEdge(boolean checkForNeg)
@@ -137,11 +195,52 @@ public class Graph
     }
     
     /**
+     * Out degree. How many edges come from this Vertex to some other Vertex
+     * @param fro Vertex
+     * @return integer with # edges
+     */
+    public int outDegree(Vertex fro)
+    {
+        LinkedHashSet<DEdge> edges = map.get(fro);
+        return edges.size();
+    }
+    
+    public LinkedList<Vertex> incomingNodes(Vertex to)
+    {
+        LinkedHashSet<DEdge> edges = reverseMap.get(to);
+        LinkedList<Vertex> from = new LinkedList<>();
+        for(DEdge edg : edges)
+        {
+            from.add(edg.getEnd());
+        }
+        return from;
+    }
+    
+    /**
+     * In degree. How many edges come to this Vertex from some other Vertex
+     * @param to Vertex 
+     * @return integer with # edges
+     */
+    public int inDegree(Vertex to)
+    {
+        LinkedHashSet<DEdge> edges = reverseMap.get(to);
+        return edges.size();
+    }
+    
+    /**
      * What possible edges can be used from given Vertex
      */
     public LinkedHashSet<DEdge> possibleEdges(Vertex v)
     {
         return map.get(v); // warning, can return null!
+    }
+    
+    /**
+     * What edges arrive at a certain vertex
+     */
+    public LinkedHashSet<DEdge> incomingEdges(Vertex v)
+    {
+        return reverseMap.get(v);
     }
     
     /**
@@ -159,6 +258,34 @@ public class Graph
         {
             if(edg.getEnd().equals(to)) // ? need similar ??
                 return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Change edge bounds/properties on a later moment. 
+     * Only useful during generation, after which changing the network can cause
+     * problems (only use it before generating observations).
+     * @param fro Staring Vertex
+     * @param to Destination/ending Vertex
+     * @param lb lower bound on the time needed (cost)
+     * @param ub upper bound on the time needed (cost) 
+     * @return 
+     */
+    public boolean changeEdgeBounds(Vertex fro, Vertex to, int lb, int ub)
+    {
+        Set<DEdge> edges = map.get(fro);
+        if(edges==null) {
+            return false;
+        }
+        for(DEdge edg : edges)
+        {
+            if(edg.getEnd().equals(to)) // ? need similar ??
+            {
+                edg.setLowerb(lb);
+                edg.setUpperb(ub);
+                return true;
+            }
         }
         return false;
     }
@@ -193,6 +320,25 @@ public class Graph
         }
         System.err.println("Vertex not found, id: " + id);
         return null;
+    }
+    
+    /**
+     * Give the array with all the vertices
+     * @return Vertex[] all the vertices
+     */
+    public Vertex[] listAllVertices()
+    {
+        Vertex[] vertices = nodes.toArray(new Vertex[nodes.size()]);
+        return vertices;
+    }
+    
+    /**
+     * Number of vertices
+     * @return integer size of vertex array
+     */
+    public int vSize()
+    {
+        return nodes.size();
     }
     
     public boolean getNegativeEdgeCheck()

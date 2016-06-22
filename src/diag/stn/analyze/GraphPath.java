@@ -135,7 +135,9 @@ public class GraphPath
         System.out.print(vertices.get(0).getName());
         for(int i = 1; i < vertices.size(); i++)
         {
-            System.out.print(" -> " + vertices.get(i).getName());
+            DEdge e = getStepE(i);
+            System.out.print(" -[" + e.getLowerb() + "," + e.getUpperb() + "]-> ");
+            System.out.print(vertices.get(i).getName());
         }
         System.out.print("\n");
     }

@@ -208,14 +208,13 @@ public class Analyst
                     if(change[0] != 0 || change[1] != 0)
                         o.fixneeded = true;
                     
-                    diffStore.put(paths[m], change);
+                    diffStore.put(paths[m], change.clone());
 //                    System.out.println("For Observation " + o.startV.getID() +
 //                            " to " + o.endV.getID());
 //                    System.out.println("Storing obsLB:" + o.endLb + 
 //                            " pathLB:" + pathBounds[m][0] +
 //                            " obsUB:" + o.endUb +
 //                            " pathUB:" + pathBounds[m][1]);
-                    
                     for(int n=1; n < paths[m].stepSize(); n++)
                     {
                         DEdge de = paths[m].getStepE(n);
@@ -405,12 +404,11 @@ public class Analyst
             LinkedHashSet<GraphPath> paths = obsPaths.get(o);
             for(GraphPath p: paths)
             {
-                System.out.print("Path: " + p.getStepV(0).getName() + " to "
-                        + p.getLastV().getName() + "\n\n");
+                p.simplePrint();
                 if(diffStore.containsKey(p))
                 {
                     int[] bounds = diffStore.get(p);
-                    System.out.println("Diff lb:" + bounds[0] + " ub:" + bounds[1]);
+                    System.out.println("Change between lb:" + bounds[0] + " ub:" + bounds[1]);
                 }
             }
             if(DiagSTN.PRINTACC)

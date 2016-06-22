@@ -27,6 +27,7 @@ public class DEdge
     private int plowerbound, pupperbound; // predicted lower + upper
     private ArrayList<int[]> posChanges; // only use int[2] for lb/ub change
     private boolean hazard;
+    private boolean contingent;
     
     /**
      * Constructor of a separate directed edge
@@ -39,6 +40,7 @@ public class DEdge
         end = e;
         posChanges = new ArrayList<>();
         hazard = false;
+        contingent = false;
     }
     
     /**
@@ -126,9 +128,19 @@ public class DEdge
      */
     public void makeContigent()
     {
+        contingent = true;
         addPossibleChange(0,0);
         // By having a possible change of [0,0] an edge will not be changed in
         // the final diagnosis, all other changes added to this edge will fail
+    }
+    
+    /**
+     * Has this edge been made contingent ?
+     * @return boolean value true = cont / false = not
+     */
+    public boolean isContingent()
+    {
+        return contingent;
     }
     
     /**

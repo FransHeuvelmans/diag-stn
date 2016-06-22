@@ -18,6 +18,9 @@ package diag.stn;
 import diag.stn.STN.*;
 import diag.stn.analyze.GraphPath;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -46,10 +49,16 @@ public class GraphGenerator
         public List<Observation> observations;
     }
     
-    private class BuildVertex
+    private class BuildVertex implements Comparable<BuildVertex>
     {
         public Vertex vert;
         public int degree;
+
+        @Override
+        public int compareTo(BuildVertex t)
+        {
+            return Integer.compare(this.degree, t.degree);
+        }
     }
     
     /**
@@ -58,7 +67,7 @@ public class GraphGenerator
      * have many incoming!)
      * @return filled Graph
      */
-    public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax, int falseObs, int trueObs)
+    public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax, int falseObs, int trueObs, boolean zeroPoint)
     {
         if(falseObs < 1)
         {
@@ -89,9 +98,7 @@ public class GraphGenerator
         Vertex second = new Vertex(id);
         gr.addVertex(second);
         id++;
-        int lb = rand.nextInt(20);
-        int ub = lb + rand.nextInt(60);
-        gr.addEdge(second, first, lb, ub);
+        gr.addEdge(second, first, 0, 0);
         // Keep this direction for all the vertices to add (new to old)
         BuildVertex bv = new BuildVertex();
         bv.vert = first;
@@ -126,7 +133,101 @@ public class GraphGenerator
             System.out.println("Nodes added: " + nodes + " edges added: " + edges);
         }
         
-        grOb.graph = gr;
+        /**
+         * First generate a graph, 
+         * after which the starting and ending nodes of the observations
+         * are needed for adding a possible T0. (and add this possible t0)
+         * Only _then_ assign intervals to each of the edges.
+         * This needs to be done in a separate step using a linear ordering
+         * 
+         */
+        
+        LinkedList<BuildVertex[]> falseO = new LinkedList(); 
+        LinkedList<BuildVertex[]> trueO = new LinkedList();
+        falseObsAdd:
+        while(falseObs > 0)
+        {
+            // Since its new to old try to get a path between 2 by trialNerror
+            int half = vertInfo.size() /2;
+            BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
+            BuildVertex toV = vertInfo.get(rand.nextInt(half));
+            
+            for(BuildVertex fObs[] : falseO)
+            {
+                if(fObs[0].vert.equals(fromV.vert))
+                {
+                    if(fObs[1].vert.equals(toV.vert))
+                        continue falseObsAdd; // yep, its the quickNDirty
+                    // Can't have a certain obs already in use
+                }
+            }
+            
+            GraphPath startPath = new GraphPath(fromV.vert);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            // Check if 0,0 bounds are returned indeed!! (Could go wrong)
+            if(!boundsFound.isEmpty())
+            {
+                BuildVertex[] aFObs = new BuildVertex[2];
+                aFObs[0] = fromV;
+                aFObs[1] = toV;
+                falseO.add(aFObs);
+                falseObs--;
+            }
+        }
+        
+        trueObsAdd:
+        while(trueObs > 0)
+        {
+            // Since its new to old try to get a path between 2 by trialNerror
+            int half = vertInfo.size() /2;
+            BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
+            BuildVertex toV = vertInfo.get(rand.nextInt(half));
+            
+            
+            for(BuildVertex tObs[] : trueO)
+            {
+                if(tObs[0].vert.equals(fromV.vert))
+                {
+                    if(tObs[1].vert.equals(toV.vert))
+                        continue trueObsAdd; // yep, its the quickNDirty
+                    // Can't have a certain (any) obs already in use (be it
+                    // either false or true)
+                }
+            }
+            
+            GraphPath startPath = new GraphPath(fromV.vert);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            if(!boundsFound.isEmpty())
+            {
+                BuildVertex[] aTObs = new BuildVertex[2];
+                aTObs[0] = fromV;
+                aTObs[1] = toV;
+                falseO.add(aTObs);
+                trueObs--;
+            }
+        }
+        
+        if(zeroPoint)
+        {
+            Vertex startSync = new Vertex(Integer.MAX_VALUE,"S");
+            gr.addVertex(startSync);
+            for(BuildVertex[] ob : falseO)
+            {
+                Vertex oldstart = ob[0].vert;
+                gr.addEdge(startSync, oldstart, 0, 0);
+                ob[0].vert = startSync;
+            }
+            for(BuildVertex[] ob : trueO)
+            {
+                Vertex oldstart = ob[0].vert;
+                gr.addEdge(startSync, oldstart, 0, 0);
+                ob[0].vert = startSync;
+            }
+        }
+        
+        grOb.graph = initializeBounds(gr);
+        // WARNING!!! Graph has been build from scratch so old Vertex refs.
+        // will not work from this point on!
         
         /**
          * Idea to generate Observations as well and have those added to grOb 
@@ -141,82 +242,27 @@ public class GraphGenerator
         
         grOb.observations = new LinkedList();
         
-        falseObsAdd:
-        while(falseObs > 0)
+        for(BuildVertex[] falseObserv : falseO)
         {
-            // Since its new to old try to get a path between 2 by trialNerror
-            int half = vertInfo.size() /2;
-            BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
-            BuildVertex toV = vertInfo.get(rand.nextInt(half));
-            
-            for(Observation fObs : grOb.observations)
-            {
-                if(fObs.startV.equals(fromV.vert))
-                {
-                    if(fObs.endV.equals(toV.vert))
-                        continue falseObsAdd; // yep, its the quickNDirty
-                    // Can't have a certain obs already in use
-                }
-            }
-            
-            GraphPath startPath = new GraphPath(fromV.vert);
-            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            Vertex oStartV = grOb.graph.getVertex(falseObserv[0].vert.getID());
+            Vertex oEndV = grOb.graph.getVertex(falseObserv[1].vert.getID());
+            GraphPath startPath = new GraphPath(oStartV);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
             int[] boufou = combinePaths(boundsFound);
-            if(!boundsFound.isEmpty())
-            { // there is actually a path!
-                // TODO Calc proper lb & ub !!!!
-                Observation ob = new Observation(fromV.vert, toV.vert, boufou[0], boufou[1]);
-                grOb.observations.add(ob);
-                falseObs--;
-                /*
-                TODO: Prob. -> no changes in bounds are added but still there
-                is some discrepancy between the propagated values here and the ones
-                from Analyst so there is some problem!
-                Current version only finds the first path and uses that value
-                (which is not the correct value for a consistent path)
-                */
-//                System.out.println("For Observation " + fromV.vert.getID() +
-//                            " to " + toV.vert.getID());
-//                System.out.println("Generating LB:" + boundsFound.get(0)[0] + 
-//                            " UB:" + boundsFound.get(0)[1]);
-            }
+            // TODO: Do something with boufou[x] here!
+            Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
+            grOb.observations.add(ob);
         }
-        trueObsAdd:
-        while(trueObs > 0)
+        for(BuildVertex[] trueObserv : trueO)
         {
-            // Since its new to old try to get a path between 2 by trialNerror
-            int half = vertInfo.size() /2;
-            BuildVertex fromV = vertInfo.get(half + rand.nextInt(vertInfo.size() - half));
-            BuildVertex toV = vertInfo.get(rand.nextInt(half));
-            
-            
-            for(Observation aObs : grOb.observations)
-            {
-                if(aObs.startV.equals(fromV.vert))
-                {
-                    if(aObs.endV.equals(toV.vert))
-                        continue trueObsAdd; // yep, its the quickNDirty
-                    // Can't have a certain (any) obs already in use (be it
-                    // either false or true)
-                }
-            }
-            
-            GraphPath startPath = new GraphPath(fromV.vert);
-            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV.vert, gr);
+            Vertex oStartV = grOb.graph.getVertex(trueObserv[0].vert.getID());
+            Vertex oEndV = grOb.graph.getVertex(trueObserv[1].vert.getID());
+            GraphPath startPath = new GraphPath(oStartV);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
             int[] boufou = combinePaths(boundsFound);
-            if(!boundsFound.isEmpty())
-            { // there is actually a path!
-                // if it is fully correct all paths should be the same... !!!!
-                Observation ob = new Observation(fromV.vert, toV.vert, boufou[0], boufou[1]);
-                grOb.observations.add(ob);
-                trueObs--;
-//                System.out.println("For Observation " + fromV.vert.getID() +
-//                            " to " + toV.vert.getID());
-//                System.out.println("Generating LB:" + boundsFound.get(0)[0] + 
-//                            " UB:" + boundsFound.get(0)[1]);
-            }
+            Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
+            grOb.observations.add(ob);
         }
-        
         return grOb;
     }
     
@@ -243,7 +289,6 @@ public class GraphGenerator
         }
         
         //int ignore = 0;
-        int tries = 300; // 300 random tries to add an edge, if it cant be done it cant be done!
         int add = 0;
         LinkedList<BuildVertex> vertexDegPlus = new LinkedList();
         while(links>0)  // While there are new edges needed, addmore!
@@ -267,9 +312,7 @@ public class GraphGenerator
                     
                     int lb,ub;
                     
-                    lb = 0;
-                    ub = 20 + rand.nextInt(60);
-                    g.addEdge(newV, bigv.vert, lb, ub);
+                    g.addEdge(newV, bigv.vert, 0, 0);
                     
                     
                     vertexDegPlus.add(bigv);
@@ -282,8 +325,6 @@ public class GraphGenerator
                     break; // break out of for loop, time for next edge!
                 }
             }
-            if(tries < 1)
-                break;
         }
         // Increment the number of edges and vertex-degrees after all edges have
         // been added (so the edge addition does not influence itself)
@@ -308,28 +349,26 @@ public class GraphGenerator
             return pathLbUbs; // dead end!
         for(DEdge de : edgeExp)
         {
-            if(!g.edgeUsed(de))
+            dlb = 0;
+            dub = 0;
+            dlb = de.getLowerb() + lb;
+            dub = de.getUpperb() + ub;
+            if(de.getEnd().equals(end))
             {
                 g.addStep(de, de.getEnd());
-                dlb = de.getLowerb();
-                dub = de.getUpperb();
-                lb += dlb;
-                ub += dub;
-                if(de.getEnd().equals(end))
-                {
-                    int[] lbub = new int[2];
-                    lbub[0] = lb;
-                    lbub[1] = ub;
-                    pathLbUbs.add(lbub);
-                }
-                ArrayList<int[]> returnedLbUbs;
-                if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
-                {
-                    returnedLbUbs = pathCalc(g,lb,ub, end, graph);
-                    pathLbUbs.addAll(returnedLbUbs);
-                }
-                g.removeLast();
+                int[] lbub = new int[2];
+                lbub[0] = dlb;
+                lbub[1] = dub;
+                pathLbUbs.add(lbub);
             }
+            ArrayList<int[]> returnedLbUbs;
+            if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
+            {
+                g.addStep(de, de.getEnd());
+                returnedLbUbs = pathCalc(g,dlb,dub, end, graph);
+                pathLbUbs.addAll(returnedLbUbs);
+            }
+            g.removeLast();
         }
         
         return pathLbUbs; 
@@ -494,10 +533,10 @@ public class GraphGenerator
             
             GraphPath startPath = new GraphPath(fromV);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
-            int[] boufou = combinePaths(boundsFound);
             if(!boundsFound.isEmpty())
             { // there is actually a path!
                 // TODO PROBLEM, SEE OTHER GEN !!!!
+                int[] boufou = combinePaths(boundsFound);
                 Observation ob = new Observation(fromV, toV, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
                 falseObs--;
@@ -532,10 +571,10 @@ public class GraphGenerator
             
             GraphPath startPath = new GraphPath(fromV);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
-            int[] boufou = combinePaths(boundsFound);
             if(!boundsFound.isEmpty())
             { // there is actually a path!
                 // if it is fully correct all paths should be the same... !!!!
+                int[] boufou = combinePaths(boundsFound);
                 Observation ob = new Observation(fromV, toV, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
                 trueObs--;
@@ -544,26 +583,160 @@ public class GraphGenerator
         return grOb;
     }
     
-    /**
-     * Make a problem Single Origin. A vertex is added and [0,0] edges are added
-     * to the starting points of the observations.
-     * @param grObs Graph + Observations
-     * @return the same reference (mutates input!)
-     */
-    public GraphObs makeSO(GraphObs grObs)
+    private Graph initializeBounds(Graph graphIn)
     {
-        // Warning, doesn't make a proper copy simply changes the handed object
-        // and has been made for simulation perposes only!
+        Graph improvedGraph = new Graph();
+        LinkedList<DEdge> edgeToAdd = new LinkedList(); //rebuild before adding!
+        LinkedList<Vertex> vertexToAdd = new LinkedList();
+        LinkedList<Vertex> ordering = new LinkedList(); 
+        // copy of VertexToAdd without the remove and with the new Vertices!
         
-        Vertex startSync = new Vertex(Integer.MAX_VALUE,"S");
-        grObs.graph.addVertex(startSync);
-        for(Observation ob : grObs.observations)
+        while(graphIn.vSize() > 0)
         {
-            Vertex oldstart = ob.startV;
-            grObs.graph.addEdge(startSync, oldstart, 0, 0);
-            ob.startV = startSync;
+            Vertex[] verticesIn = graphIn.listAllVertices();
+            ArrayList<BuildVertex> vertexList = new ArrayList();
+            for(Vertex v :  verticesIn)
+            {
+                BuildVertex bv = new BuildVertex();
+                bv.vert = v;
+                bv.degree = graphIn.inDegree(v);
+                vertexList.add(bv);
+            }
+            Collections.sort(vertexList);
+            int lowestDegree = vertexList.get(0).degree;
+            for(BuildVertex target : vertexList)
+            {
+                if(target.degree == lowestDegree)
+                {   // These must be cut and put on the addition Queue
+                    
+                    // first remove the edges
+                    LinkedHashSet<DEdge> edgesOut = graphIn.possibleEdges(target.vert);
+                    DEdge[] toRem = edgesOut.toArray(new DEdge[edgesOut.size()]);
+                    for(DEdge de: toRem)
+                    {
+                        edgeToAdd.add(de);
+                        graphIn.removeEdge(de);
+                    }
+                    
+                    // then remove the vertex
+                    boolean rem = graphIn.removeVertex(target.vert);
+                    if(!rem)
+                        System.out.println("Target vert not found in graph");
+                                
+                    vertexToAdd.add(target.vert);
+                }
+            }
+            
+            // Now add new Vertices to the output Graph
+            for(Vertex addV : vertexToAdd)
+            {
+                Vertex imprV = new Vertex(addV.getID(), addV.getName());
+                improvedGraph.addVertex(imprV);
+                ordering.add(imprV);
+                
+                // After adding a vertex see which edges need to go to thatthere
+                // vertex!
+                ArrayList<DEdge> toThisNewV = new ArrayList();
+                for(DEdge addE : edgeToAdd)
+                {
+                    if(addE.getEnd().equals(addV));
+                        toThisNewV.add(addE);
+                }
+                Vertex[] fromsToNewV = new Vertex[toThisNewV.size()];
+                
+                for(int i = 0; i < toThisNewV.size() ; i++)
+                {
+                    Vertex old = toThisNewV.get(i).getEnd();
+                    fromsToNewV[i] = improvedGraph.getVertex(old.getID());
+                }
+                ArrayList<int[]> bounds = commonAncest(fromsToNewV, improvedGraph, ordering);
+                
+                // TODO: either a value has a bound and needs to be combined with the other bounds
+                // or it doesnt and any value is ok since it does not matter for the rest of em
+                // Also email Nico because his solution does not work!
+            }
         }
-        return grObs;
+        /*
+        while(vertexList.size() > 0)
+        {
+            BuildVertex toAdd = vertexList.remove(vertexList.size()-1);
+            newVList.add(toAdd);
+            Vertex imprV = new Vertex(toAdd.vert.getID(), toAdd.vert.getName());
+            improvedGraph.addVertex(toAdd.vert);
+            */
+        
+        return improvedGraph;
+    }
+    
+    /** 
+     * Need to check if multiple from-Vertices to a certain new Vertex have
+     * a common ancestor and therefore multiple paths that might need fixing
+     * (make sure that both paths have the same 
+     * @param froms
+     * @return 
+     */
+    private ArrayList<int[]> commonAncest(Vertex[] froms, Graph g, LinkedList<Vertex> order)
+    {
+        ArrayList<int[]> boundsPerFrom = new ArrayList();
+        
+        Vertex[][] ancstrz = new Vertex[froms.length][];
+        LinkedList<Vertex> common = new LinkedList();
+        for(int k = 0; k < froms.length; k++)
+            ancstrz[k] = ancest(froms[k], g).toArray(new Vertex[20]); 
+            // lets hope 20s ok
+        for(int i = 0; i < froms.length; i++)
+        {
+            for(int j = i + 1; j < froms.length; j++)
+            {
+                // for each pair check for common ancestor
+                for(Vertex vert: ancstrz[i])
+                {
+                    for(Vertex pert: ancstrz[j])
+                    {
+                        if(vert.equals(pert))
+                        {
+                            // yes common ancest
+                            common.add(vert);
+                        }
+                    }
+                }
+            }
+        }
+        // now check which common occurs first in order
+        for(int l = 0; l < order.size(); l++)
+        {
+            boolean bF = false;
+            for(Vertex c : common)
+            {
+                if(c.equals(order.get(l)))
+                {
+                    // This is the earliest common ancestor so now calc the paths
+                    for(Vertex fr : froms)
+                    {
+                        int[] boufou = {0,0};
+                        GraphPath startPath = new GraphPath(c);
+                        ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, fr, g);
+                        if(boundsFound.size() > 1)
+                            boufou = combinePaths(boundsFound);
+                        boundsPerFrom.add(boufou);
+                    }
+                    return boundsPerFrom;
+                }
+            }
+        }
+        return null;
+    }
+    
+    private ArrayList<Vertex> ancest(Vertex vx, Graph graaf)
+    {
+        ArrayList<Vertex> ancesti = new ArrayList();
+        for(Vertex inc : graaf.incomingNodes(vx)) 
+        {   
+            // als incoming empty is returned hij ook empty set
+            ancesti.addAll(ancest(inc, graaf));
+            ancesti.add(inc);
+        }
+        return ancesti;
     }
     
 }
