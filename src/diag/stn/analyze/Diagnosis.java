@@ -25,7 +25,7 @@ import java.util.Map;
  * Is build by a graph analyst
  * @author Frans van den Heuvel
  */
-public class Diagnosis
+public class Diagnosis implements Comparable<Diagnosis>
 {
     private ArrayList<DEdge> edges;
     private Map<DEdge, int[]> changes;
@@ -129,5 +129,56 @@ public class Diagnosis
             cpy.addPartial(d, chngs[0], chngs[1]);
         }
         return cpy;
+    }
+
+    @Override
+    public int compareTo(Diagnosis other) 
+    {
+        final int BEFORE = -1;
+        final int SIMILAR = 0;
+        final int AFTER = 1;
+        if(this.changes.size() < other.changes.size())
+            return BEFORE;
+        else if(this.changes.size() > other.changes.size())
+            return AFTER;
+        else
+        {
+            // Equal size so tally the pos changes and neg changes
+            if(this.chngtally() > other.chngtally())
+                return BEFORE; 
+            else if(this.chngtally() < other.chngtally())
+                return AFTER;
+            else
+                return SIMILAR;
+            /**
+             * The preferred diagnosis is the one which moves its constraints back
+             * Please note that SIMILAR does not mean equal. If 2 diagnosis are
+             * similar no one is preferred over the other but they do not have to
+             * be the same diagnosis!
+             */
+
+        }
+    }
+    
+    public int chngtally()
+    {
+        int out = 0;
+        for(DEdge de : edges)
+        {
+            int[] edgeChng = changes.get(de);
+            if(edgeChng != null)
+            {
+                if(edgeChng[0] > 0)
+                    out += 1;
+                else if(edgeChng[0] < 0)
+                    out -= 1;
+                
+                if(edgeChng[1] > 0)
+                    out += 1;
+                else if(edgeChng[1] < 0)
+                    out -= 1;
+            }
+        }
+        return out;
     }
 }

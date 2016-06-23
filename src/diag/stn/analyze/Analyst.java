@@ -19,6 +19,7 @@ import diag.stn.DiagSTN;
 import diag.stn.STN.*;
 import java.lang.Math;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -439,6 +440,7 @@ public class Analyst
      */
     public void printDiagnosis()
     {
+        Collections.sort(diagnosisList);
         int iter = 1;
         System.out.println("=== Diagnosis overview ===");
         for(Diagnosis d : diagnosisList)

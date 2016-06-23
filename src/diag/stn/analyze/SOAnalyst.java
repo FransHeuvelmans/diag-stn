@@ -229,16 +229,4 @@ public class SOAnalyst extends Analyst
          * combination of starting vertex and ending vertex!
          */
     }
-    
-    public void printDiagnosis()
-    {
-        int iter = 1;
-        System.out.println("=== Diagnosis overview ===");
-        for(Diagnosis d : diagnosisList)
-        {
-            System.out.println("Diagnosis: " + iter);
-            d.printDiagnosis();
-            iter++;
-        }
-    }
 }
