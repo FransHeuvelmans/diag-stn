@@ -65,7 +65,10 @@ public class SOAnalyst extends Analyst
          * analyst
          */
         if(observations.isEmpty())
+        {
             System.err.println("No observations added before calculation");
+            return;
+        }
         Observation ob = observations.get(0);
         for(int i = 1; i < observations.size(); i++)
         {
@@ -103,20 +106,30 @@ public class SOAnalyst extends Analyst
             int[] intersect = new int[2];
             
             LinkedHashSet<GraphPath> pathsSet = obsPaths.get(o);
+            if(pathsSet == null) // prolly wont be filled anyway
+                continue;
             GraphPath[] paths = pathsSet.toArray(new GraphPath[pathsSet.size()]);
             if(paths == null) 
                 continue;
             for(int k = 0; k < paths.length; k++)
             {
                 // iterate over combinations to see if there might be a problem
-                for(int l = k + 1; l < paths.length; l++)
+                if(paths.length > 1)
                 {
-                    if(smallerThanObs.get(paths[k]) && smallerThanObs.get(paths[l]))
+                    for(int l = k + 1; l < paths.length; l++)
                     {
-                        if((predSizes.get(paths[k]) + predSizes.get(paths[l])) < (o.endUb - o.endLb))
+                        if(smallerThanObs.get(paths[k]) && smallerThanObs.get(paths[l]))
                         {
-                            consistencyHazard.put(paths[k], Boolean.TRUE);
-                            consistencyHazard.put(paths[l], Boolean.TRUE);
+                            if((predSizes.get(paths[k]) + predSizes.get(paths[l])) < (o.endUb - o.endLb))
+                            {
+                                consistencyHazard.put(paths[k], Boolean.TRUE);
+                                consistencyHazard.put(paths[l], Boolean.TRUE);
+                            }
+                            else
+                            {
+                                consistencyHazard.put(paths[k], Boolean.FALSE);
+                                consistencyHazard.put(paths[l], Boolean.FALSE);
+                            }
                         }
                         else
                         {
@@ -124,12 +137,9 @@ public class SOAnalyst extends Analyst
                             consistencyHazard.put(paths[l], Boolean.FALSE);
                         }
                     }
-                    else
-                    {
-                        consistencyHazard.put(paths[k], Boolean.FALSE);
-                        consistencyHazard.put(paths[l], Boolean.FALSE);
-                    }
                 }
+                else
+                    consistencyHazard.put(paths[k], Boolean.FALSE);
                 
                 int[] lbub = diffStore.get(paths[k]);
                 int deltalb = o.endLb - lbub[0];
@@ -173,44 +183,45 @@ public class SOAnalyst extends Analyst
             return; // dead end!
         for(DEdge de : edgeExp)
         {
-            if(!g.edgeUsed(de))
+            dlb = 0;
+            dub = 0;
+            dlb = de.getLowerb() + lb;
+            dub = de.getUpperb() + ub;
+            for(Observation o : observations)
+            {
+                if(de.getEnd().equals(o.endV))
+                {
+                    g.addStep(de, de.getEnd());
+                    LinkedHashSet<GraphPath> paths = obsPaths.get(o);
+                    if(paths == null) 
+                    {
+                        paths = new LinkedHashSet();
+                        obsPaths.put(o, paths);
+                    }
+                    GraphPath copyPath = g.copy(); // Need to use a copy from now
+                    paths.add(copyPath);
+                    int[] lbub = new int[2];
+                    lbub[0] = dlb;
+                    lbub[1] = dub;
+                    int predSize = dub-dlb;
+                    predSizes.put(copyPath, predSize);
+                    if(predSize < (o.endUb - o.endLb))
+                        smallerThanObs.put(copyPath, Boolean.TRUE);
+                    else
+                        smallerThanObs.put(copyPath, Boolean.FALSE);
+
+                    diffStore.put(copyPath, lbub);
+                    // !!!! WARNING, STILL NEEDS CODE TO COMBINE CHANGES
+                    // TO A PROPER lbub (for all paths on 1 obs)
+                }
+            }
+            if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
             {
                 g.addStep(de, de.getEnd());
-                dlb = de.getLowerb();
-                dub = de.getUpperb();
-                lb += dlb;
-                ub += dub;
-                for(Observation o : observations)
-                {
-                    if(de.getEnd().equals(o.endV))
-                    {
-                        LinkedHashSet<GraphPath> paths = obsPaths.get(o);
-                        if(paths == null) 
-                        {
-                            paths = new LinkedHashSet();
-                            obsPaths.put(o, paths);
-                        }
-                        GraphPath copyPath = g.copy(); // Need to use a copy from now
-                        paths.add(copyPath);
-                        int[] lbub = new int[2];
-                        lbub[0] = lb;
-                        lbub[1] = ub;
-                        int predSize = ub-lb;
-                        predSizes.put(copyPath, predSize);
-                        if(predSize < (o.endUb - o.endLb))
-                            smallerThanObs.put(copyPath, Boolean.TRUE);
-                        else
-                            smallerThanObs.put(copyPath, Boolean.FALSE);
-                        
-                        diffStore.put(copyPath, lbub);
-                        // !!!! WARNING, STILL NEEDS CODE TO COMBINE CHANGES
-                        // TO A PROPER lbub (for all paths on 1 obs)
-                    }
-                }
-                if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
-                    pathCalc(g,lb,ub);
-                g.removeLast();
+                pathCalc(g,dlb,dub);
             }
+            if(g.stepSize() > 1)
+                g.removeLast();
         }
         
         /**

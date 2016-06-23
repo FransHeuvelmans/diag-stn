@@ -379,7 +379,8 @@ public class GraphGenerator
                 returnedLbUbs = pathCalc(g,dlb,dub, end, graph);
                 pathLbUbs.addAll(returnedLbUbs);
             }
-            g.removeLast();
+            if(g.stepSize() > 1)
+                g.removeLast();
         }
         
         return pathLbUbs; 
@@ -672,13 +673,17 @@ public class GraphGenerator
                     if(addE.getEnd().equals(addV))
                         toThisNewV.add(addE);
                 }
-                Vertex[] fromsToNewV = new Vertex[toThisNewV.size()];
-                
+                //Vertex[] fromsToNewV = new Vertex[toThisNewV.size()];
+                ArrayList<Vertex> tempFTNV = new ArrayList();
                 for(int i = 0; i < toThisNewV.size() ; i++)
                 {
                     Vertex old = toThisNewV.get(i).getStart();
-                    fromsToNewV[i] = improvedGraph.getVertex(old.getID());
+                    Vertex newv = improvedGraph.getVertex(old.getID());
+                    if(newv != null)
+                        tempFTNV.add(newv);
+                    // fromsToNewV[i] = improvedGraph.getVertex(old.getID());
                 }
+                Vertex[] fromsToNewV = tempFTNV.toArray(new Vertex[tempFTNV.size()]);
                 ArrayList<int[]> bounds = commonAncest(fromsToNewV, improvedGraph);
                 
                 // Add the edges according to bounds as well

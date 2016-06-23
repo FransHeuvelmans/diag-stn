@@ -376,4 +376,21 @@ public class Graph
     {
         return checkNegativeEdges;
     }
+    
+    public Graph copy()
+    {
+        Graph clone = new Graph();
+        for(Vertex v : nodes)
+        {
+            clone.addVertex(new Vertex(v.getID(), v.getName()));
+        }
+        for(DEdge de : edges)
+        {
+            Vertex start = clone.getVertex(de.getStart().getID());
+            Vertex end = clone.getVertex(de.getEnd().getID());
+            clone.addEdge(start, end, de.getLowerb(), de.getUpperb(), de.isContingent());
+        }
+        clone.reverseNegativeEdge(checkNegativeEdges);
+        return clone;
+    }
 }
