@@ -453,7 +453,7 @@ public class Analyst
     {
         // need to create new set for each new observation!
         LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(graphPath.getLastV());
-        if(edgeExp == null)
+        if(edgeExp == null || (edgeExp.size() < 1))
             return; // dead end!
         for(DEdge de : edgeExp)
         {

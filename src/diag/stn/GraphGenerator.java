@@ -69,10 +69,10 @@ public class GraphGenerator
      */
     public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax, int falseObs, int trueObs, boolean zeroPoint)
     {
-        if(falseObs < 1)
+        if(falseObs < 0)
         {
-            System.err.println("# of false observations needs to be positive");
-            falseObs = 1; // can't use a GraphObs with no observations
+            System.err.println("# of false observations needs to be non-negative");
+            falseObs = 0; // can't use a GraphObs with no observations
         }
         if(trueObs < 0)
         {
@@ -130,7 +130,10 @@ public class GraphGenerator
         {
             int links = Math.min(i, linksPerStep);
             BAaddVertex(gr, links, onlymax);
-            System.out.println("Nodes added: " + nodes + " edges added: " + edges);
+            if(nodes % 10 == 0)
+            {
+                System.out.println("Nodes added: " + nodes + " edges added: " + edges);
+            }
         }
         
         /**
@@ -248,10 +251,15 @@ public class GraphGenerator
             Vertex oEndV = grOb.graph.getVertex(falseObserv[1].vert.getID());
             GraphPath startPath = new GraphPath(oStartV);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
-            int[] boufou = combinePaths(boundsFound);
-            // TODO: Do something with boufou[x] here!
-            Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
-            grOb.observations.add(ob);
+            if(boundsFound.size() > 0)
+            {
+                int[] boufou = combinePaths(boundsFound);
+                // TODO: Do something with boufou[x] here!
+                boufou[0] += 50;
+                boufou[1] += 100;
+                Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
+                grOb.observations.add(ob);
+            }
         }
         for(BuildVertex[] trueObserv : trueO)
         {
@@ -259,9 +267,12 @@ public class GraphGenerator
             Vertex oEndV = grOb.graph.getVertex(trueObserv[1].vert.getID());
             GraphPath startPath = new GraphPath(oStartV);
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
-            int[] boufou = combinePaths(boundsFound);
-            Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
-            grOb.observations.add(ob);
+            if(boundsFound.size() > 0)
+            {
+                int[] boufou = combinePaths(boundsFound);
+                Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
+                grOb.observations.add(ob);
+            }
         }
         return grOb;
     }
@@ -583,16 +594,32 @@ public class GraphGenerator
         return grOb;
     }
     
+    private Graph initializeSimpleBounds(Graph graphIn)
+    {
+        Random rand = new Random();
+        
+        DEdge[] allEdges = graphIn.listAllEdges();
+        for(DEdge de : allEdges)
+        {
+            de.setUpperb(rand.nextInt(100));
+        }
+        
+        return graphIn;
+    }
+    
     private Graph initializeBounds(Graph graphIn)
     {
+        Random ranGen = new Random();
+        
         Graph improvedGraph = new Graph();
         LinkedList<DEdge> edgeToAdd = new LinkedList(); //rebuild before adding!
-        LinkedList<Vertex> vertexToAdd = new LinkedList();
-        LinkedList<Vertex> ordering = new LinkedList(); 
+        LinkedList<Vertex> vertexToAdd;
         // copy of VertexToAdd without the remove and with the new Vertices!
         
         while(graphIn.vSize() > 0)
         {
+            vertexToAdd = new LinkedList(); // Always reset! should be none left
+            
             Vertex[] verticesIn = graphIn.listAllVertices();
             ArrayList<BuildVertex> vertexList = new ArrayList();
             for(Vertex v :  verticesIn)
@@ -611,11 +638,14 @@ public class GraphGenerator
                     
                     // first remove the edges
                     LinkedHashSet<DEdge> edgesOut = graphIn.possibleEdges(target.vert);
-                    DEdge[] toRem = edgesOut.toArray(new DEdge[edgesOut.size()]);
-                    for(DEdge de: toRem)
+                    if((edgesOut != null) && (edgesOut.size() > 0))
                     {
-                        edgeToAdd.add(de);
-                        graphIn.removeEdge(de);
+                        DEdge[] toRem = edgesOut.toArray(new DEdge[edgesOut.size()]);
+                        for(DEdge de: toRem)
+                        {
+                            edgeToAdd.add(de);
+                            graphIn.removeEdge(de);
+                        }
                     }
                     
                     // then remove the vertex
@@ -632,58 +662,92 @@ public class GraphGenerator
             {
                 Vertex imprV = new Vertex(addV.getID(), addV.getName());
                 improvedGraph.addVertex(imprV);
-                ordering.add(imprV);
                 
+                // System.out.println("Adding vert: " + imprV.getName());
                 // After adding a vertex see which edges need to go to thatthere
                 // vertex!
                 ArrayList<DEdge> toThisNewV = new ArrayList();
                 for(DEdge addE : edgeToAdd)
                 {
-                    if(addE.getEnd().equals(addV));
+                    if(addE.getEnd().equals(addV))
                         toThisNewV.add(addE);
                 }
                 Vertex[] fromsToNewV = new Vertex[toThisNewV.size()];
                 
                 for(int i = 0; i < toThisNewV.size() ; i++)
                 {
-                    Vertex old = toThisNewV.get(i).getEnd();
+                    Vertex old = toThisNewV.get(i).getStart();
                     fromsToNewV[i] = improvedGraph.getVertex(old.getID());
                 }
-                ArrayList<int[]> bounds = commonAncest(fromsToNewV, improvedGraph, ordering);
+                ArrayList<int[]> bounds = commonAncest(fromsToNewV, improvedGraph);
                 
-                // TODO: either a value has a bound and needs to be combined with the other bounds
-                // or it doesnt and any value is ok since it does not matter for the rest of em
-                // Also email Nico because his solution does not work!
+                // Add the edges according to bounds as well
+                for(int j = 0; j < fromsToNewV.length; j++)
+                {
+                    int[] bound = bounds.get(j);
+                    if((bound[0] == 0) && (bound[1] == 0))
+                    {
+                        // can be any bound
+                        int lb = ranGen.nextInt(40);
+                        int ub = (lb + ranGen.nextInt(20));
+                        improvedGraph.addEdge(fromsToNewV[j], imprV, lb, ub);
+                        // System.out.print("Adding edge: " + fromsToNewV[j].getName()
+                        // + " -[" + lb + "," + ub + "]-> " + imprV.getName() + "\n");
+                    }
+                    else
+                    {
+                        if((bound[0] >= 0 && bound[1] >= 0)&&(bound[0] <= bound[1]))
+                        {
+                            improvedGraph.addEdge(fromsToNewV[j], imprV, bound[0], bound[1]);
+                            // System.out.print("Adding edge: " + fromsToNewV[j].getName()
+                            // + " -b[" + bound[0] + "," + bound[1] + "]-> " + imprV.getName() + "\n");
+                        }
+                        else
+                        {
+                            // System.out.print("Skipping edge: " + fromsToNewV[j].getName()
+                            // + " -b[" + bound[0] + "," + bound[1] + "]-> " + imprV.getName() + "\n");
+                        }
+                    }
+                }
             }
+            /**
+             * Vertex & edges are removed and added now (or in the case of edges,
+             * placed on the stack)
+             */
         }
-        /*
-        while(vertexList.size() > 0)
-        {
-            BuildVertex toAdd = vertexList.remove(vertexList.size()-1);
-            newVList.add(toAdd);
-            Vertex imprV = new Vertex(toAdd.vert.getID(), toAdd.vert.getName());
-            improvedGraph.addVertex(toAdd.vert);
-            */
-        
         return improvedGraph;
     }
     
     /** 
-     * Need to check if multiple from-Vertices to a certain new Vertex have
-     * a common ancestor and therefore multiple paths that might need fixing
+     * Checks if multiple from-Vertices to a certain new Vertex have
+     * a common ancestor and if so will return the needed edge weights
      * (make sure that both paths have the same 
      * @param froms
      * @return 
      */
-    private ArrayList<int[]> commonAncest(Vertex[] froms, Graph g, LinkedList<Vertex> order)
+    private ArrayList<int[]> commonAncest(Vertex[] froms, Graph g)
     {
         ArrayList<int[]> boundsPerFrom = new ArrayList();
+        for(Vertex someV : froms)
+        {
+            int[] someAr = new int[2];
+            someAr[0] = 0;
+            someAr[1] = 0;
+            boundsPerFrom.add(someAr);
+        }
         
-        Vertex[][] ancstrz = new Vertex[froms.length][];
-        LinkedList<Vertex> common = new LinkedList();
+        Vertex[][] ancstrz = new Vertex[froms.length][]; // all ancestors per Vertex
+        LinkedList<CommonStruct> allCommon = new LinkedList(); //
+        
         for(int k = 0; k < froms.length; k++)
-            ancstrz[k] = ancest(froms[k], g).toArray(new Vertex[20]); 
-            // lets hope 20s ok
+            ancstrz[k] = ancest(froms[k], g).toArray(new Vertex[0]); 
+            /**
+             * At the moment ancest has only the guarantee that in a path
+             * the deepest/farthest Vertex is first but when branching paths
+             * this does not have to be the case (This could possibly lead 
+             * to a problem -> see 22 June notes)
+             */
+            
         for(int i = 0; i < froms.length; i++)
         {
             for(int j = i + 1; j < froms.length; j++)
@@ -696,47 +760,339 @@ public class GraphGenerator
                         if(vert.equals(pert))
                         {
                             // yes common ancest
-                            common.add(vert);
+                            // ONLY ADD IF IT WASNT ADDED YET!!!
+                            
+                            // TODO:Check if the order from Vertex[0] is correct 
+                            // ie. is multiple ancestor, does it pick the latest ?
+                            boolean addA = true;
+                            boolean addB = true;
+                            for(CommonStruct cs: allCommon)
+                            {
+                                if(froms[i].equals(cs.fromV))
+                                {
+                                    if(cs.common.equals(vert))
+                                    {
+                                        addA = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(addA)
+                            {
+                                CommonStruct strA = new CommonStruct();
+                                strA.common = vert;
+                                strA.fromV = froms[i];
+                                allCommon.add(strA);
+                            }
+                            for(CommonStruct cs: allCommon)
+                            {
+                                if(froms[j].equals(cs.fromV))
+                                {
+                                    if(cs.common.equals(vert))
+                                    {
+                                        addB = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(addB)
+                            {
+                                CommonStruct strB = new CommonStruct();
+                                strB.common = vert;
+                                strB.fromV = froms[j];
+                                allCommon.add(strB);
+                            }
                         }
                     }
                 }
             }
         }
-        // now check which common occurs first in order
-        for(int l = 0; l < order.size(); l++)
+        if(allCommon.size() < 1)
+            return boundsPerFrom;
+        
+        // First create groups with common ancestors
+        LinkedList<CommonGroup> groupsWComAnc = new LinkedList();
+        while(allCommon.size() > 1)
         {
-            boolean bF = false;
-            for(Vertex c : common)
+            CommonGroup newGroup = new CommonGroup();
+            newGroup.bpf = new ArrayList();
+            for(Vertex vf : froms)
             {
-                if(c.equals(order.get(l)))
+                int[] foo = new int[2];
+                foo[0] = 0;
+                foo[1] = 0;
+                newGroup.bpf.add(foo);
+            }
+            newGroup.csWComAnc = new LinkedList();
+            newGroup.csWComAnc.add(allCommon.getFirst());
+            for(CommonStruct cs : allCommon)
+            {
+                if(cs.common.equals(newGroup.csWComAnc.get(0).common))
                 {
-                    // This is the earliest common ancestor so now calc the paths
-                    for(Vertex fr : froms)
+                    newGroup.csWComAnc.add(cs);
+                }
+            }
+            // now delete them
+            for(CommonStruct delcs : newGroup.csWComAnc)
+            {
+                for(CommonStruct posdel : allCommon)
+                {
+                    if(delcs.equals(posdel))
                     {
-                        int[] boufou = {0,0};
-                        GraphPath startPath = new GraphPath(c);
-                        ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, fr, g);
-                        if(boundsFound.size() > 1)
-                            boufou = combinePaths(boundsFound);
-                        boundsPerFrom.add(boufou);
+                        allCommon.remove(delcs);
+                        break;
                     }
-                    return boundsPerFrom;
+                }
+            }
+            // and add the new group to all groups
+            groupsWComAnc.add(newGroup);
+        }
+        
+        // now for each group populate its BoundsPerFrom
+        for(CommonGroup cg : groupsWComAnc)
+        {
+            int highestlb = Integer.MIN_VALUE;
+            int highestub = Integer.MIN_VALUE;
+            for(CommonStruct cas : cg.csWComAnc)
+            {
+                int[] boufou = {0,0};
+                GraphPath startPath = new GraphPath(cas.common);
+                if(cas.common.equals(cas.fromV)) 
+                {   
+                    // This fromV is common with another fromV ie. is the ancest
+                    // of another node
+                    cas.lb = 0;
+                    cas.ub = 0;
+                }
+                else
+                {
+                    ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, cas.fromV, g);
+                    boufou = combinePaths(boundsFound); // Should be ok since it has been found
+                    cas.lb = boufou[0];
+                    cas.ub = boufou[1];
+                }
+                
+                if(cas.lb > highestlb)
+                    highestlb = cas.lb;
+                if(cas.ub > highestub)
+                    highestub = cas.ub;
+                if(highestub < highestlb)
+                    highestub = highestlb;
+            }
+            // now set the outputs for the edges as per notes highestlb + 10, highestub + 20
+            for(CommonStruct caso : cg.csWComAnc)
+            {
+                caso.edgeLb = (highestlb + 10) - caso.lb;
+                caso.edgeUb = (highestub + 20) - caso.ub;
+                
+                // Finally put them in the right position in the output array
+                for(int p = 0; p < froms.length; p++)
+                {
+                    if(froms[p].equals(caso.fromV))
+                    {
+                        int[] bounds = cg.bpf.get(p);
+                        bounds[0] = caso.edgeLb;
+                        bounds[1] = caso.edgeUb;
+                    }
                 }
             }
         }
-        return null;
+        // finally combine the boundsPerFrom from different ancestor groups to
+        // a single output array 
+        for(int l = 0; l < boundsPerFrom.size(); l++)
+        {
+            int[] tempFinal;
+            ArrayList<int[]> toCombine = new ArrayList();
+            for(CommonGroup cg : groupsWComAnc)
+            {
+                if(cg.bpf.get(l)[0] > 0)
+                    toCombine.add(cg.bpf.get(l));
+            }
+            if(toCombine.size() > 1)
+            {
+                // Takes the Intersection
+                int[] finalbounds = toCombine.remove(toCombine.size()-1); // take last
+                for(int[] p: toCombine)
+                {
+                    if(p[0] > finalbounds[0])
+                        finalbounds[0] = p[0];
+                    if(p[1] < finalbounds[1])
+                        finalbounds[1] = p[1];
+                }
+                if(finalbounds[0] < finalbounds[1])
+                {
+                    // lucky! they can be combined
+                    tempFinal = boundsPerFrom.get(l);
+                    tempFinal[0] = finalbounds[0];
+                    tempFinal[1] = finalbounds[1];
+                }
+                else
+                {
+                    // do NOT add this edge
+                    tempFinal = boundsPerFrom.get(l);
+                    tempFinal[0] = -10;
+                    tempFinal[1] = -15;
+                }
+            }
+            else if(toCombine.size() == 1)
+            {
+                tempFinal = boundsPerFrom.get(l);
+                tempFinal[0] = toCombine.get(0)[0];
+                tempFinal[1] = toCombine.get(0)[1];
+            }
+            // else no change, simply {0,0} will do!
+        }
+        
+        return boundsPerFrom;
     }
     
+    /**
+     * Returns a list of ancestor Vertices of a vertex in a given Graph.
+     * In a path, the deepest ancestor is first.
+     * @param vx
+     * @param graaf
+     * @return ArrayList with Vertex objects.
+     */
     private ArrayList<Vertex> ancest(Vertex vx, Graph graaf)
     {
         ArrayList<Vertex> ancesti = new ArrayList();
-        for(Vertex inc : graaf.incomingNodes(vx)) 
+        LinkedList<Vertex> directAncest = graaf.incomingNodes(vx);
+        for(Vertex inc : directAncest) 
         {   
             // als incoming empty is returned hij ook empty set
             ancesti.addAll(ancest(inc, graaf));
-            ancesti.add(inc);
         }
+        ancesti.add(vx);
         return ancesti;
+    }
+    
+    private class CommonStruct
+    {
+        public Vertex common;
+        public Vertex fromV;
+        public int lb;
+        public int ub;
+        public int edgeLb;
+        public int edgeUb;
+    }
+    
+    private class CommonGroup
+    {
+        private LinkedList<CommonStruct> csWComAnc;
+        ArrayList<int[]> bpf;
+    }
+    
+    public void testAncest()
+    {
+        Graph test = new Graph();
+        Vertex a = new Vertex(1, "a");
+        Vertex b = new Vertex(2, "b");
+        Vertex c = new Vertex(3, "c");
+        Vertex d = new Vertex(4, "d");
+        Vertex e = new Vertex(5, "e");
+        Vertex f = new Vertex(6, "f");
+        Vertex g = new Vertex(7, "g");
+        Vertex h = new Vertex(8, "h");
+        Vertex i = new Vertex(9, "i");
+        Vertex j = new Vertex(10, "j");
+        Vertex k = new Vertex(11, "k");
+        Vertex l = new Vertex(12, "l");
+        Vertex m = new Vertex(13, "m");
+        Vertex n = new Vertex(14, "n");
+        Vertex o = new Vertex(15,"o");
+        test.addVertex(a);
+        test.addVertex(b);
+        test.addVertex(c);
+        test.addVertex(d);
+        test.addVertex(e);
+        test.addVertex(f);
+        test.addVertex(g);
+        test.addVertex(h);
+        test.addVertex(i);
+        test.addVertex(j);
+        test.addVertex(k);
+        test.addVertex(l);
+        test.addVertex(m);
+        test.addVertex(n);
+        test.addVertex(o);
+        test.addEdge(a, b, 10, 20);
+        test.addEdge(b, c, 10, 20);
+        test.addEdge(a, d, 5, 10);
+        test.addEdge(d, e, 5, 10);
+        test.addEdge(g, j, 1, 2);
+        test.addEdge(j, k, 1, 2);
+        test.addEdge(g, h, 5, 6);
+        test.addEdge(h, i, 5, 6);
+        test.addEdge(l, m, 100, 200);
+        test.addEdge(m, n, 100, 200);
+        test.addEdge(o,a, 500,510); // added this line to check mutliple ancestors
+        
+        Vertex[] fromVertices = {e, c, i, k, n};
+        ArrayList<int[]> out = commonAncest(fromVertices, test);
+        System.out.print("Vertex e should have output 20 - 40, has :");
+        System.out.print(out.get(0)[0] + " - " + out.get(0)[1] + "\n");
+        System.out.print("Vertex c should have output 10 - 20, has :");
+        System.out.print(out.get(1)[0] + " - " + out.get(1)[1] + "\n");
+        System.out.print("Vertex i should have output 10 - 20, has :");
+        System.out.print(out.get(2)[0] + " - " + out.get(2)[1] + "\n");
+        System.out.print("Vertex k should have output 18 - 28, has :");
+        System.out.print(out.get(3)[0] + " - " + out.get(3)[1] + "\n");
+        System.out.print("Vertex k should have output 0 - 0, has :");
+        System.out.print(out.get(4)[0] + " - " + out.get(4)[1] + "\n");
+    }
+    
+    public Graph testInit()
+    {
+        Graph test = new Graph();
+        Vertex a = new Vertex(1, "a");
+        Vertex b = new Vertex(2, "b");
+        Vertex c = new Vertex(3, "c");
+        Vertex d = new Vertex(4, "d");
+        Vertex e = new Vertex(5, "e");
+        Vertex f = new Vertex(6, "f");
+        Vertex g = new Vertex(7, "g");
+        Vertex h = new Vertex(8, "h");
+        Vertex i = new Vertex(9, "i");
+        Vertex j = new Vertex(10, "j");
+        Vertex k = new Vertex(11, "k");
+        Vertex l = new Vertex(12, "l");
+        Vertex m = new Vertex(13, "m");
+        Vertex n = new Vertex(14, "n");
+        Vertex o = new Vertex(15,"o");
+        test.addVertex(a);
+        test.addVertex(b);
+        test.addVertex(c);
+        test.addVertex(d);
+        test.addVertex(e);
+        test.addVertex(f);
+        test.addVertex(g);
+        test.addVertex(h);
+        test.addVertex(i);
+        test.addVertex(j);
+        test.addVertex(k);
+        test.addVertex(l);
+        test.addVertex(m);
+        test.addVertex(n);
+        test.addVertex(o);
+        test.addEdge(a, b, 0, 0);
+        test.addEdge(b, c, 0, 0);
+        test.addEdge(a, d, 0, 0);
+        test.addEdge(d, e, 0, 0);
+        test.addEdge(g, j, 0, 0);
+        test.addEdge(j, k, 0, 0);
+        test.addEdge(g, h, 0, 0);
+        test.addEdge(h, i, 0, 0);
+        test.addEdge(l, m, 0, 0);
+        test.addEdge(m, n, 0, 0);
+        test.addEdge(o,a, 0,0); 
+        test.addEdge(e, f, 0, 0);
+        test.addEdge(c, f, 0, 0);
+        test.addEdge(i, f, 0, 0);
+        test.addEdge(k, f, 0, 0);
+        test.addEdge(n, f, 0, 0);
+        
+        Graph outp = initializeBounds(test);
+        return outp;
     }
     
 }

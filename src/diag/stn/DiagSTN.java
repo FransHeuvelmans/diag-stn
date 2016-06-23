@@ -51,6 +51,7 @@ public class DiagSTN
         // testCase1();
         // testCase2();
         // testCase3();
+        // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
         runRandomGen();
     }
@@ -118,7 +119,7 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(5, 3, true, 3, 1);
+        GraphObs strct = gen.generateBAGraph(120, 2, true, 2, 1, false);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -314,6 +315,37 @@ public class DiagSTN
         analyst.printDiagnosis();
     }
 
+    public static void testInitExt()
+    {
+        GraphGenerator gen = new GraphGenerator();
+        
+        //gen.testAncest();
+        Graph g = gen.testInit();
+        
+        Observation ob1 = new Observation(g.getVertex(15),g.getVertex(6),50,100);
+        Observation ob2 = new Observation(g.getVertex(7),g.getVertex(6),50,100);
+        Observation ob3 = new Observation(g.getVertex(12),g.getVertex(6),50,100);
+        
+        // analysis part
+        Analyst analyst = new Analyst(g);
+        analyst.addObservation(ob1);
+        analyst.addObservation(ob2);
+        analyst.addObservation(ob3);
+        
+        analyst.generatePaths();
+        
+        analyst.printPaths();
+        
+        analyst.propagateWeights();
+        
+        analyst.printWeights(ob1);
+        
+        analyst.printWeights(ob2);
+        
+        analyst.generateDiagnosis();
+        
+        analyst.printDiagnosis();
+    }
     /**
      * What about inf. UB on edges, see example STN in paper, 
      * its ok for diagnosis to say [-inf, 19] because no change would be 

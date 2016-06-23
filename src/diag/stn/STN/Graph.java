@@ -122,10 +122,24 @@ public class Graph
         if(edges.contains(de))
         {
             edges.remove(de);
-            LinkedHashSet x = map.remove(de.getStart());
-            LinkedHashSet y = reverseMap.remove(de.getEnd());
-            if(x == null || y == null)
-                System.err.println("Edge wasnt fully dialed in on removal");
+            LinkedHashSet mapSet = map.get(de.getStart());
+            LinkedHashSet revmapSet = reverseMap.get(de.getEnd());
+            boolean x = mapSet.remove(de);
+            boolean y = revmapSet.remove(de);
+            if(x == false || y == false)
+                System.err.println("Edge wasnt fully dialed in on removal: " +
+                        "" + de.getStart().getName() + " - " + de.getEnd().getName());
+            
+            // Some cleanup after removing edges
+            if(mapSet.size() < 1)
+            {   // No mapset needed anymore
+               map.remove(de.getStart());
+            }
+            if(revmapSet.size() < 1)
+            {   // same
+                reverseMap.remove(de.getEnd());
+            }
+            
             return true;
         }
         else
@@ -202,6 +216,8 @@ public class Graph
     public int outDegree(Vertex fro)
     {
         LinkedHashSet<DEdge> edges = map.get(fro);
+        if(edges == null)
+            return 0;
         return edges.size();
     }
     
@@ -209,9 +225,12 @@ public class Graph
     {
         LinkedHashSet<DEdge> edges = reverseMap.get(to);
         LinkedList<Vertex> from = new LinkedList<>();
-        for(DEdge edg : edges)
+        if(edges != null)
         {
-            from.add(edg.getEnd());
+            for(DEdge edg : edges)
+            {
+                from.add(edg.getStart());
+            }
         }
         return from;
     }
@@ -224,6 +243,8 @@ public class Graph
     public int inDegree(Vertex to)
     {
         LinkedHashSet<DEdge> edges = reverseMap.get(to);
+        if(edges == null)
+            return 0;
         return edges.size();
     }
     
@@ -330,6 +351,16 @@ public class Graph
     {
         Vertex[] vertices = nodes.toArray(new Vertex[nodes.size()]);
         return vertices;
+    }
+    
+    /**
+     * Give the array with all the edges
+     * @return Array with all the edge objects
+     */
+    public DEdge[] listAllEdges()
+    {
+        DEdge[] edgeList = edges.toArray(new DEdge[edges.size()]);
+        return edgeList;
     }
     
     /**
