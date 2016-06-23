@@ -119,7 +119,8 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, false);
+        //GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, false);
+        GraphObs strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 1, false);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -138,7 +139,8 @@ public class DiagSTN
     {
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, true);
+        //GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, true);
+        GraphObs strct = gen.generatePlanlikeGraph(20, 20, 30, 2, 3, 2, 1, true);
         Analyst al = new SOAnalyst(strct.graph);
         for(Observation ob : strct.observations)
         {

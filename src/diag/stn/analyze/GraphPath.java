@@ -141,4 +141,16 @@ public class GraphPath
         }
         System.out.print("\n");
     }
+    
+    public void smallPrint()
+    {
+        System.out.print(vertices.get(0).getName());
+        for(int i = 1; i < vertices.size(); i++)
+        {
+            DEdge e = getStepE(i);
+            System.out.print("-");
+            System.out.print(vertices.get(i).getName());
+        }
+        System.out.print("\n");
+    }
 }

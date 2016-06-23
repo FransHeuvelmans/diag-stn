@@ -351,12 +351,13 @@ public class GraphGenerator
     
     private ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, Graph graph)
     {
+        //g.smallPrint();
         int dlb,dub;
         ArrayList<int[]> pathLbUbs = new ArrayList<>();
         // combine generatePaths & propagateWeights
         LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(g.getLastV());
         
-         if(edgeExp == null)
+         if(edgeExp == null || (edgeExp.size() < 1))
             return pathLbUbs; // dead end!
         for(DEdge de : edgeExp)
         {
@@ -371,6 +372,7 @@ public class GraphGenerator
                 lbub[0] = dlb;
                 lbub[1] = dub;
                 pathLbUbs.add(lbub);
+                g.removeLast();
             }
             ArrayList<int[]> returnedLbUbs;
             if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
@@ -378,9 +380,8 @@ public class GraphGenerator
                 g.addStep(de, de.getEnd());
                 returnedLbUbs = pathCalc(g,dlb,dub, end, graph);
                 pathLbUbs.addAll(returnedLbUbs);
-            }
-            if(g.stepSize() > 1)
                 g.removeLast();
+            }
         }
         
         return pathLbUbs; 
@@ -412,7 +413,7 @@ public class GraphGenerator
      * @return 
      */
     public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, 
-            int maxLineCon, int maxVertCon, int falseObs, int trueObs)
+            int maxLineCon, int maxVertCon, int falseObs, int trueObs, boolean zeroPoint)
     {
         if(line < 1)
         {
@@ -449,7 +450,7 @@ public class GraphGenerator
         Graph gr = new Graph();        
         LinkedList<Vertex>[] lines = new LinkedList[line];
         
-        int randNod = linelb - lineub;
+        int randNod = lineub - linelb;
         int lineVertices, ub, lb;
         while(line > 0)
         {
@@ -470,16 +471,18 @@ public class GraphGenerator
                 id++;
                 lines[line-1].add(nextV);
                 
-                // add an edge
-                lb = 0; // TODO! also the dirty solution!!
-                ub = rand.nextInt(120);
-                gr.addEdge(nextV, prevV, lb, ub); // WARNING!! from next to prev again!
+                gr.addEdge(nextV, prevV, 0, 0); // WARNING!! from next to prev again!
                 
                 // onto the next
                 prevV = nextV;
                 lineVertices--;
             }
-            
+            System.out.print("line " + (line-1) + ":");
+            for(Vertex vprint : lines[line-1])
+            {
+                System.out.print(vprint.getName() + "<-");
+            }
+            System.out.print("\n");
             // onto the next
             line--;
         }
@@ -493,88 +496,99 @@ public class GraphGenerator
                 int linePick = rand.nextInt(lines.length);
                 if(linePick == l)
                     continue;
+                System.out.print("Connecting :" + l + "," + linePick +":");
                 int vertConnect = rand.nextInt(maxVertCon) + 1;
                 while(vertConnect > 0)
                 {
                     int vertStart = rand.nextInt(conLine.size());
-                    int space = lines[linePick].size() - vertStart;
+                    int usedSpace = conLine.size() - vertStart;
+                    int space = lines[linePick].size() - (usedSpace + 1); 
+                    // 3 room extra in between
                     if(space < 1)
                         continue;
-                    int vertEnd = rand.nextInt(space) + vertStart;
+                    int vertEnd = rand.nextInt(space);
                     
                     lb = 0; // TODO! also the dirty solution!!
                     ub = rand.nextInt(30);
                     gr.addEdge(conLine.get(vertStart),
                             (lines[linePick].get(vertEnd)), lb, ub);
-                    
+                    System.out.print(conLine.get(vertStart).getName() + "," + lines[linePick].get(vertEnd).getName());
+                    System.out.print(" & ");
                     vertConnect--;
                 }
-                linePick--;
+                System.out.print("\n");
+                lineConnects--;
             }
         }
         
-        // time to bruteforce some observations with this Graph...
-         grOb.observations = new LinkedList();
-        
+        LinkedList<Vertex[]> falseO = new LinkedList(); 
+        LinkedList<Vertex[]> trueO = new LinkedList();
         falseObsAdd:
         while(falseObs > 0)
         {
             int startLine, endLine, startV, endV;
+            int sSpace, eSpace;
             startLine = rand.nextInt(lines.length);
             endLine = rand.nextInt(lines.length);
-            startV = rand.nextInt(4);
-            if(startV >= lines[startLine].size())
+            startV = lines[startLine].size() - (rand.nextInt(4)+1);
+            //if(startV >= lines[startLine].size())
+            if(startV < 0)
                 continue falseObsAdd;
-            endV = lines[endLine].size() - rand.nextInt(4);
-            if(endV < 0)
+            endV = rand.nextInt(4);
+            sSpace = lines[startLine].size() - startV;
+            eSpace = lines[endLine].size() - endV;
+            if(eSpace < sSpace)
                 continue falseObsAdd;
             
             Vertex fromV, toV;
             fromV = lines[startLine].get(startV);
             toV = lines[endLine].get(endV);
             
-            for(Observation fObs : grOb.observations)
+            for(Vertex[] fObs : falseO)
             {
-                if(fObs.startV.equals(fromV))
+                if(fObs[0].equals(fromV))
                 {
-                    if(fObs.endV.equals(toV))
+                    if(fObs[1].equals(toV))
                         continue falseObsAdd; // yep, its the quickNDirty
                     // Can't have a certain obs already in use
                 }
             }
             
             GraphPath startPath = new GraphPath(fromV);
+            //System.out.println("Calling pathcalc " + fromV.getName() + "," + toV.getName());
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
+            // Check if 0,0 bounds are returned indeed!! (Could go wrong)
             if(!boundsFound.isEmpty())
-            { // there is actually a path!
-                // TODO PROBLEM, SEE OTHER GEN !!!!
-                int[] boufou = combinePaths(boundsFound);
-                Observation ob = new Observation(fromV, toV, boufou[0], boufou[1]);
-                grOb.observations.add(ob);
+            {
+                Vertex[] aFObs = new Vertex[2];
+                aFObs[0] = fromV;
+                aFObs[1] = toV;
+                falseO.add(aFObs);
                 falseObs--;
             }
         }
+        
         trueObsAdd:
         while(trueObs > 0)
         {
             int someL, startV, endV;
             someL = rand.nextInt(lines.length);
-            startV = rand.nextInt(4);
-            if(startV >= lines[someL].size())
+            startV = lines[someL].size() - (rand.nextInt(4)+1);
+            if(startV < 0)
                 continue trueObsAdd;
-            endV = lines[someL].size() - rand.nextInt(4);
-            if(endV < 0)
+            endV = rand.nextInt(4);
+            if(endV >= startV)
                 continue trueObsAdd;
             
             Vertex fromV, toV;
             fromV = lines[someL].get(startV);
             toV = lines[someL].get(endV);
             
-            for(Observation aObs : grOb.observations)
+            for(Vertex[] tObs : trueO)
             {
-                if(aObs.startV.equals(fromV))
+                if(tObs[0].equals(fromV))
                 {
-                    if(aObs.endV.equals(toV))
+                    if(tObs[1].equals(toV))
                         continue trueObsAdd; // yep, its the quickNDirty
                     // Can't have a certain (any) obs already in use (be it
                     // either false or true)
@@ -582,14 +596,79 @@ public class GraphGenerator
             }
             
             GraphPath startPath = new GraphPath(fromV);
+            //System.out.println("Calling pathcalc " + fromV.getName() + "," + toV.getName());
             ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, toV, gr);
             if(!boundsFound.isEmpty())
-            { // there is actually a path!
-                // if it is fully correct all paths should be the same... !!!!
-                int[] boufou = combinePaths(boundsFound);
-                Observation ob = new Observation(fromV, toV, boufou[0], boufou[1]);
-                grOb.observations.add(ob);
+            {
+                Vertex[] aTObs = new Vertex[2];
+                aTObs[0] = fromV;
+                aTObs[1] = toV;
+                falseO.add(aTObs);
                 trueObs--;
+            }
+        }
+        
+        if(zeroPoint)
+        {
+            Vertex startSync = new Vertex(Integer.MAX_VALUE,"S");
+            gr.addVertex(startSync);
+            for(Vertex[] ob : falseO)
+            {
+                Vertex oldstart = ob[0];
+                gr.addEdge(startSync, oldstart, 0, 0);
+                ob[0] = startSync;
+            }
+            for(Vertex[] ob : trueO)
+            {
+                Vertex oldstart = ob[0];
+                gr.addEdge(startSync, oldstart, 0, 0);
+                ob[0] = startSync;
+            }
+        }
+        grOb.graph = initializeBounds(gr);
+        
+        // time to bruteforce some observations with this Graph...
+         grOb.observations = new LinkedList();
+        
+        for(Vertex[] falseObserv : falseO)
+        {
+            Vertex oStartV = grOb.graph.getVertex(falseObserv[0].getID());
+            Vertex oEndV = grOb.graph.getVertex(falseObserv[1].getID());
+            GraphPath startPath = new GraphPath(oStartV);
+            //System.out.println("Calling pathcalc " + oStartV.getName() + "," + oEndV.getName());
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
+            if(boundsFound.size() > 0)
+            {
+                int[] boufou = combinePaths(boundsFound);
+                // TODO: Do something with boufou[x] here!
+                boufou[0] += 50;
+                boufou[1] += 100;
+                Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
+                grOb.observations.add(ob);
+            }
+            else
+            {
+                System.out.println("Couldnt add obs: " + falseObserv[0].getID()
+                + " , " + falseObserv[1].getID());
+            }
+        }
+        for(Vertex[] trueObserv : trueO)
+        {
+            Vertex oStartV = grOb.graph.getVertex(trueObserv[0].getID());
+            Vertex oEndV = grOb.graph.getVertex(trueObserv[1].getID());
+            GraphPath startPath = new GraphPath(oStartV);
+            //System.out.println("Calling pathcalc " + oStartV.getName() + "," + oEndV.getName());
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
+            if(boundsFound.size() > 0)
+            {
+                int[] boufou = combinePaths(boundsFound);
+                Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
+                grOb.observations.add(ob);
+            }
+            else
+            {
+                System.out.println("Couldnt add obs: " + trueObserv[0].getID()
+                + " , " + trueObserv[1].getID());
             }
         }
         return grOb;
