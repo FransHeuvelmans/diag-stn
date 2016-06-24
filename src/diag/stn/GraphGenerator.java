@@ -217,13 +217,27 @@ public class GraphGenerator
             for(BuildVertex[] ob : falseO)
             {
                 Vertex oldstart = ob[0].vert;
-                gr.addEdge(startSync, oldstart, 0, 0);
+                List<Vertex> adj = gr.adjacentNodes(startSync);
+                if(!startSync.equals(oldstart)) // If some oldStart hasnt been changed already
+                {
+                    if(adj == null)
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                    else if(!adj.contains(oldstart))
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                }
                 ob[0].vert = startSync;
             }
             for(BuildVertex[] ob : trueO)
             {
                 Vertex oldstart = ob[0].vert;
-                gr.addEdge(startSync, oldstart, 0, 0);
+                List<Vertex> adj = gr.adjacentNodes(startSync);
+                if(!startSync.equals(oldstart)) // If some oldStart hasnt been changed already
+                {
+                    if(adj == null)
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                    else if(!adj.contains(oldstart))
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                }
                 ob[0].vert = startSync;
             }
         }
@@ -615,13 +629,27 @@ public class GraphGenerator
             for(Vertex[] ob : falseO)
             {
                 Vertex oldstart = ob[0];
-                gr.addEdge(startSync, oldstart, 0, 0);
+                List<Vertex> adj = gr.adjacentNodes(startSync);
+                if(!startSync.equals(oldstart)) // If some oldStart hasnt been changed already
+                {
+                    if(adj == null)
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                    else if(!adj.contains(oldstart))
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                }
                 ob[0] = startSync;
             }
             for(Vertex[] ob : trueO)
             {
                 Vertex oldstart = ob[0];
-                gr.addEdge(startSync, oldstart, 0, 0);
+                List<Vertex> adj = gr.adjacentNodes(startSync);
+                if(!startSync.equals(oldstart)) // If some oldStart hasnt been changed already
+                {
+                    if(adj == null)
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                    else if(!adj.contains(oldstart))
+                        gr.addEdge(startSync, oldstart, 0, 0);
+                }
                 ob[0] = startSync;
             }
         }
@@ -681,6 +709,7 @@ public class GraphGenerator
         DEdge[] allEdges = graphIn.listAllEdges();
         for(DEdge de : allEdges)
         {
+            de.setLowerb(0);
             de.setUpperb(rand.nextInt(100));
         }
         
