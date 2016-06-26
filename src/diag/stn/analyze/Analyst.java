@@ -171,7 +171,8 @@ public class Analyst
                     intersect[1] = intersect[1] < ub ? intersect[1] : ub;
                     if(((lb > intersect[1]) || (ub < intersect[0])) && !DiagSTN.IGNOREINCONSIST)
                     {
-                        System.out.println("Inconsistent path found!");
+                        if(DiagSTN.PRINTWARNING)
+                            System.out.println("Inconsistent path found!");
                         if(inconsistent == null)
                             inconsistent = new LinkedHashSet();
                         if(!inconsistent.contains(o))
@@ -245,8 +246,9 @@ public class Analyst
         // First repair possible inconsistent observations
         if(!DiagSTN.IGNOREINCONSIST && inconsistent != null) 
         {
-            System.out.println("Found inconsistent paths, will proceed with"
-                    + " repair suggestions");
+            if(DiagSTN.PRINTWARNING)
+                System.out.println("Found inconsistent paths, will proceed with"
+                        + " repair suggestions");
             Iterator<Observation> incIter = inconsistent.iterator();
             while(incIter.hasNext())
             {
@@ -449,6 +451,11 @@ public class Analyst
             d.printDiagnosis();
             iter++;
         }
+    }
+    
+    public int diagSize()
+    {
+        return diagnosisList.size();
     }
     
     private void simplePaths(GraphPath graphPath, Observation obs)

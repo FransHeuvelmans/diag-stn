@@ -35,6 +35,7 @@ import org.yaml.snakeyaml.*;
 public class DiagSTN
 {
     public static final boolean PRINTACC = true;
+    public static final boolean PRINTWARNING = false;
     public static final boolean IGNOREINCONSIST = false;
     
     /**
@@ -53,7 +54,8 @@ public class DiagSTN
         // testCase3();
         // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-        runSORandomGen();
+        //runSORandomGen();
+        runBenchmark();
     }
     
     public static void readAndProcess(String file)
@@ -152,6 +154,69 @@ public class DiagSTN
         al.printWeights();
         al.generateDiagnosis();
         al.printDiagnosis();
+    }
+    
+    public static void runBenchmark()
+    {
+        GraphGenerator gen = new GraphGenerator();
+        GraphObs strct;
+        Analyst al;
+        boolean SOAnalist = false;
+        int iter = 3000;
+        String location = "benchResult-BAN120-3-f-3-2.csv";
+        FileWriter writer = null;
+        try
+        {
+            writer = new FileWriter(location,true);
+        } catch (IOException ex)
+        {
+            System.err.println("Couldnt open file to write benchresults to");
+            Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        long start, end;
+        for(int i = 0; i < iter; i++)
+        {
+            strct = gen.generateBAGraph(120, 3, false, 3, 2, false);
+            //strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 1, false);
+            
+            if(!SOAnalist)
+                al = new Analyst(strct.graph);
+            else
+                al = new SOAnalyst(strct.graph);
+            for(Observation ob : strct.observations)
+            {
+                al.addObservation(ob);
+            }
+
+            start = System.nanoTime();
+            al.generatePaths();
+            if(!SOAnalist)
+                al.propagateWeights();
+            al.generateDiagnosis();
+            end = System.nanoTime();
+            try
+            {
+                writer.append(SOAnalist + "," + al.diagSize() + "," 
+                        + (end - start) + "\n");
+                if(iter % 100 == 0)
+                    writer.flush();
+            } catch (Throwable ex)
+            {
+                System.err.println("Couldnt append line to file");
+                Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        try
+        {
+            writer.flush();
+            writer.close();
+        } catch (IOException ex)
+        {
+            System.err.println("Couldnt close file to write benchresults to");
+            Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
     }
     
     public static void testCase1()

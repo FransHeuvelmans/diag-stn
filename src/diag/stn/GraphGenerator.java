@@ -130,10 +130,10 @@ public class GraphGenerator
         {
             int links = Math.min(i, linksPerStep);
             BAaddVertex(gr, links, onlymax);
-            if(nodes % 10 == 0)
+            /*if(nodes % 10 == 0)
             {
                 System.out.println("Nodes added: " + nodes + " edges added: " + edges);
-            }
+            }*/
         }
         
         /**
@@ -491,12 +491,12 @@ public class GraphGenerator
                 prevV = nextV;
                 lineVertices--;
             }
-            System.out.print("line " + (line-1) + ":");
+            /*System.out.print("line " + (line-1) + ":");
             for(Vertex vprint : lines[line-1])
             {
-                System.out.print(vprint.getName() + "<-");
+                //System.out.print(vprint.getName() + "<-");
             }
-            System.out.print("\n");
+            //System.out.print("\n");*/
             // onto the next
             line--;
         }
@@ -510,7 +510,7 @@ public class GraphGenerator
                 int linePick = rand.nextInt(lines.length);
                 if(linePick == l)
                     continue;
-                System.out.print("Connecting :" + l + "," + linePick +":");
+                //System.out.print("Connecting :" + l + "," + linePick +":");
                 int vertConnect = rand.nextInt(maxVertCon) + 1;
                 while(vertConnect > 0)
                 {
@@ -526,11 +526,11 @@ public class GraphGenerator
                     ub = rand.nextInt(30);
                     gr.addEdge(conLine.get(vertStart),
                             (lines[linePick].get(vertEnd)), lb, ub);
-                    System.out.print(conLine.get(vertStart).getName() + "," + lines[linePick].get(vertEnd).getName());
-                    System.out.print(" & ");
+                    //System.out.print(conLine.get(vertStart).getName() + "," + lines[linePick].get(vertEnd).getName());
+                    //System.out.print(" & ");
                     vertConnect--;
                 }
-                System.out.print("\n");
+                //System.out.print("\n");
                 lineConnects--;
             }
         }
