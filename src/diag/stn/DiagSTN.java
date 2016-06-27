@@ -35,7 +35,7 @@ import org.yaml.snakeyaml.*;
 public class DiagSTN
 {
     public static final boolean PRINTACC = true;
-    public static final boolean PRINTWARNING = false;
+    public static final boolean PRINTWARNING = true;
     public static final boolean IGNOREINCONSIST = false;
     
     /**
@@ -49,13 +49,13 @@ public class DiagSTN
             return;
         }
         
-        // testCase1();
+        testCase1();
         // testCase2();
         // testCase3();
         // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
         //runSORandomGen();
-        runBenchmark();
+        //runBenchmark();
     }
     
     public static void readAndProcess(String file)
@@ -161,9 +161,9 @@ public class DiagSTN
         GraphGenerator gen = new GraphGenerator();
         GraphObs strct;
         Analyst al;
-        boolean SOAnalist = false;
+        boolean SOAnalist = true;
         int iter = 10000;
-        String location = "benchResult-PLN10-8-12-2-2-5-1.csv";
+        String location = "benchSOResultTest4-PLSO9-23-27-2-2-2-1.csv";
         FileWriter writer = null;
         try
         {
@@ -178,7 +178,7 @@ public class DiagSTN
         for(int i = 0; i < iter; i++)
         {
             //strct = gen.generateBAGraph(200, 3, true, 2, 1, true);
-            strct = gen.generatePlanlikeGraph(10, 8, 12, 2, 2, 5, 1, false);
+            strct = gen.generatePlanlikeGraph(9, 23, 27, 2, 2, 2, 1, true);
             
             if(strct.observations.size() < 1)
             {

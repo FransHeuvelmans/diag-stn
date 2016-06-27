@@ -16,6 +16,7 @@
 package diag.stn;
 
 import diag.stn.STN.*;
+import diag.stn.DiagSTN;
 import diag.stn.analyze.GraphPath;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +91,9 @@ public class GraphGenerator
         GraphObs grOb = new GraphObs();
         vertInfo = new ArrayList();
         
+        int orSize = size;
+        int orFObs = falseObs;
+        int orTObs = trueObs;
         /**
          * Maybe use hashmap to store incoming # for each vertex and store those
          * need it somewhere (best in here)
@@ -280,6 +284,14 @@ public class GraphGenerator
                 Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
             }
+            else
+            {
+                if(DiagSTN.PRINTWARNING)
+                    System.out.println("Couldnt add f obs: " + falseObserv[0].vert.getID()
+                        + " , " + falseObserv[1].vert.getID());
+                return generateBAGraph(orSize, linksPerStep, onlymax, orFObs, 
+                        orTObs, zeroPoint);
+            }
         }
         for(BuildVertex[] trueObserv : trueO)
         {
@@ -292,6 +304,14 @@ public class GraphGenerator
                 int[] boufou = combinePaths(boundsFound);
                 Observation ob = new Observation(oStartV, oEndV, boufou[0], boufou[1]);
                 grOb.observations.add(ob);
+            }
+            else
+            {
+                if(DiagSTN.PRINTWARNING)
+                    System.out.println("Couldnt add t obs: " + trueObserv[0].vert.getID()
+                        + " , " + trueObserv[1].vert.getID());
+                return generateBAGraph(orSize, linksPerStep, onlymax, orFObs, 
+                        orTObs, zeroPoint);
             }
         }
         return grOb;
@@ -465,6 +485,9 @@ public class GraphGenerator
         //init
         Random rand = new Random();
         GraphObs grOb = new GraphObs();
+        int orLine = line;
+        int orFObs = falseObs;
+        int orTObs = trueObs;
         // no vertInfo needed
         id = 0;
         numEdges = 0;
@@ -624,7 +647,7 @@ public class GraphGenerator
                 Vertex[] aTObs = new Vertex[2];
                 aTObs[0] = fromV;
                 aTObs[1] = toV;
-                falseO.add(aTObs);
+                trueO.add(aTObs);
                 trueObs--;
             }
         }
@@ -660,6 +683,7 @@ public class GraphGenerator
                 ob[0] = startSync;
             }
         }
+        Graph copyTest = gr.copy();
         grOb.graph = initializeBounds(gr);
         
         // time to bruteforce some observations with this Graph...
@@ -683,8 +707,11 @@ public class GraphGenerator
             }
             else
             {
-                System.out.println("Couldnt add obs: " + falseObserv[0].getID()
-                + " , " + falseObserv[1].getID());
+                if(DiagSTN.PRINTWARNING)
+                    System.out.println("Couldnt add f obs: " + falseObserv[0].getID()
+                    + " , " + falseObserv[1].getID());
+                //return generatePlanlikeGraph(orLine, linelb, lineub, 
+                //        maxLineCon, maxVertCon, orFObs, orTObs, zeroPoint);
             }
         }
         for(Vertex[] trueObserv : trueO)
@@ -702,8 +729,11 @@ public class GraphGenerator
             }
             else
             {
-                System.out.println("Couldnt add obs: " + trueObserv[0].getID()
-                + " , " + trueObserv[1].getID());
+                if(DiagSTN.PRINTWARNING)
+                    System.out.println("Couldnt add t obs: " + trueObserv[0].getID()
+                    + " , " + trueObserv[1].getID());
+                //return generatePlanlikeGraph(orLine, linelb, lineub, 
+                //    maxLineCon, maxVertCon, orFObs, orTObs, zeroPoint);
             }
         }
         return grOb;
