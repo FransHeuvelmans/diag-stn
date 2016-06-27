@@ -65,6 +65,12 @@ public class GraphGenerator
      * Generates a new Graph (roughly) according to the Barabàsi-Albert model.
      * Applied to a directed Graph (so never more than x outgoing edges but can
      * have many incoming!)
+     * @param size Number of vertices
+     * @param linksPerStep when adding a vertex how many edges need to be added
+     * @param onlymax Always try to add max edges or a random amount
+     * @param falseObs # false obs
+     * @param trueObs # of obs true for atleast one obs
+     * @param zeroPoint Add a T0
      * @return filled Graph
      */
     public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax, int falseObs, int trueObs, boolean zeroPoint)
@@ -424,6 +430,7 @@ public class GraphGenerator
      * @param maxVertCon how much 2 plans can be interconnected
      * @param falseObs how many false observations are added
      * @param trueObs how many true observations are added
+     * @param zeroPoint add a T0?
      * @return 
      */
     public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, 

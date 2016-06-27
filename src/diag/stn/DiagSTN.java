@@ -162,8 +162,8 @@ public class DiagSTN
         GraphObs strct;
         Analyst al;
         boolean SOAnalist = false;
-        int iter = 3000;
-        String location = "benchResult-BAN120-3-f-3-2.csv";
+        int iter = 10000;
+        String location = "benchResult-PLN10-8-12-2-2-5-1.csv";
         FileWriter writer = null;
         try
         {
@@ -177,9 +177,14 @@ public class DiagSTN
         long start, end;
         for(int i = 0; i < iter; i++)
         {
-            strct = gen.generateBAGraph(120, 3, false, 3, 2, false);
-            //strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 1, false);
+            //strct = gen.generateBAGraph(200, 3, true, 2, 1, true);
+            strct = gen.generatePlanlikeGraph(10, 8, 12, 2, 2, 5, 1, false);
             
+            if(strct.observations.size() < 1)
+            {
+                i--;
+                continue;
+            }
             if(!SOAnalist)
                 al = new Analyst(strct.graph);
             else
@@ -199,7 +204,7 @@ public class DiagSTN
             {
                 writer.append(SOAnalist + "," + al.diagSize() + "," 
                         + (end - start) + "\n");
-                if(iter % 100 == 0)
+                if(i % 100 == 0)
                     writer.flush();
             } catch (Throwable ex)
             {
