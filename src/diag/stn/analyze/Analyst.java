@@ -43,6 +43,7 @@ public class Analyst
     protected Map<GraphPath, int[]> diffStore; // Need to store changes before applying to the path
     
     protected LinkedHashSet<Observation> inconsistent;
+    protected Map<GraphPath, int[]> predictions; // Just used for consistencyBasedDiag
     
     
     // Each observation might have multiple paths connected
@@ -59,6 +60,8 @@ public class Analyst
         diffStore = new HashMap<>(); 
         diagnosisList = new ArrayList<>();
         graph = g;
+        
+        predictions = new HashMap();
     }
     
     /**
@@ -158,6 +161,7 @@ public class Analyst
                     lbub[0] = lb;
                     lbub[1] = ub;
                     pathBounds[j] = lbub; // first just store the raw data
+                    predictions.put(paths[j], lbub);
                     sizes[j] = ub - lb;
                     if(sizes[j] < sizeObs)
                         smallerThanObs[j] = true;
@@ -368,6 +372,111 @@ public class Analyst
                 generateDiagnosis(diagOriginal.copy(), newWP, newTP);
             }
         }
+    }
+    
+    public ConDiagnosis[] generateConDiagnosis()
+    {
+        LinkedList<GraphPath> fDiagnoses = new LinkedList();
+        LinkedList<GraphPath> tDiagnoses = new LinkedList();
+        for(Observation ob : observations)
+        {
+            // for each obs -> for each path on that obs
+            // see if obs falls outside of pred
+            for(GraphPath obPath : obsPaths.get(ob))
+            {
+                int[] pred = predictions.get(obPath);
+                int obslb = ob.endLb;
+                int obsub = ob.endUb;
+                if(obslb < pred[1] && obsub > pred[0])
+                    tDiagnoses.add(obPath);
+                else
+                    fDiagnoses.add(obPath);
+            }
+        }
+        System.out.println("False diagnoses: " + fDiagnoses.size());
+        ConDiagnosis empty = new ConDiagnosis();
+        for(GraphPath truePath : tDiagnoses)
+        {
+            for(int i = 1; i < truePath.stepSize(); i++)
+                empty.addCorrectEdge(truePath.getStepE(i));
+        }
+        LinkedList<ConDiagnosis> conDiagnoses = generateConDiagnosis(empty,
+                fDiagnoses, new LinkedList());
+        // then loop trough all possibilities!
+        // How ? -> zelfde manier als normale generateDiag...
+        
+        return conDiagnoses.toArray(new ConDiagnosis[conDiagnoses.size()]);
+    }
+    
+    public LinkedList<ConDiagnosis> generateConDiagnosis(ConDiagnosis conDiagOri, 
+            LinkedList<GraphPath> faultyPaths , LinkedList<GraphPath> testedPaths)
+    {
+        LinkedList<ConDiagnosis> allFullDiag = new LinkedList();
+        if(faultyPaths.isEmpty())
+            return allFullDiag;
+        GraphPath path = faultyPaths.pop();    
+        testedPaths.add(path); // lost of paths that are already solved!
+        
+        if(!conDiagOri.pathSolved(path)) // if path is not solved try to solve it
+        {
+            // ie. if in the current diagnosis an edge has already been solved on the current path
+            for(int i = 1; i < path.stepSize(); i++)
+            {
+                DEdge edge = path.getStepE(i);  // for EACH edge on this path!
+                ConDiagnosis condiag = conDiagOri.copy(); // new Diagnosis
+
+                //check if edge is part of any of the testedPaths, if so 
+                // it can't be used
+                boolean alreadySolved = false;
+                if(!testedPaths.isEmpty())
+                {
+                    for(int j = 0; j < testedPaths.size()-1;j++) // shouldnt check the last added Path (ie. the current Path!!)
+                    {
+                        GraphPath p = testedPaths.get(j);
+                        if(p.edgeUsed(edge))
+                            alreadySolved = true; // can't use this edge in current diagnosis 
+                    }                           // already part of solved path
+                }
+                if(alreadySolved)
+                    continue;
+                if(condiag.edgeCorrect(edge) || condiag.edgeSolved(edge))
+                    continue;
+                
+                condiag.addFaultyEdge(edge);
+                if(faultyPaths.isEmpty())
+                    allFullDiag.add(condiag);
+                else
+                {
+                    LinkedList<GraphPath> newWP = new LinkedList<>();
+                    for(GraphPath gp: faultyPaths)
+                        newWP.add(gp);
+                    LinkedList<GraphPath> newTP = new LinkedList<>();
+                    for(GraphPath g : testedPaths)
+                        newTP.add(g);
+                    LinkedList<ConDiagnosis> out = generateConDiagnosis(condiag, newWP, newTP);
+                    for(ConDiagnosis cd : out)
+                        allFullDiag.add(cd);
+                }
+            }
+        }
+        else // apparently path was already solved
+        {   // continue as if it was solved
+            if(faultyPaths.isEmpty())
+                allFullDiag.add(conDiagOri.copy());
+            else
+            {
+                LinkedList<GraphPath> newWP = new LinkedList<>();
+                for(GraphPath gp: faultyPaths)
+                    newWP.add(gp);
+                LinkedList<GraphPath> newTP = new LinkedList<>();
+                for(GraphPath g : testedPaths)
+                    newTP.add(g);
+                LinkedList<ConDiagnosis> out = generateConDiagnosis(conDiagOri.copy(), newWP, newTP);
+                for(ConDiagnosis cd : out)
+                    allFullDiag.add(cd);
+            }
+        }
+        return allFullDiag;
     }
     
     /**

@@ -21,8 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A Diagnosis of a Graph. Is a full or partial diagnosis of the model.
- * Is build by a graph analyst
+ * A Maximum confirmation and accuracy diagnosis of a Graph. 
+ * Is a full or partial diagnosis of the model and is build by a graph analyst.
  * @author Frans van den Heuvel
  */
 public class Diagnosis implements Comparable<Diagnosis>

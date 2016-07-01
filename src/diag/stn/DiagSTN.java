@@ -377,8 +377,8 @@ public class DiagSTN
         graph.addEdge(k, l, 3, 12);
         
         // 3 obs between a-f, a-i and a-l
-        Observation ob1 = new Observation(a,f,40,53);
-        //Observation ob2 = new Observation(a,l,17,41); // correct obs
+        Observation ob1 = new Observation(a,f,40,53); // correct obs
+        //Observation ob2 = new Observation(a,i,17,41); // correct obs
         Observation ob2 = new Observation(a,i,36,65);
         //Observation ob3 = new Observation(a,l,32,64); // correct obs
         Observation ob3 = new Observation(a,l,28,48);
