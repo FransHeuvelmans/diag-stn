@@ -82,6 +82,45 @@ public class Diagnosis implements Comparable<Diagnosis>
     }
     
     /**
+     * Return a list with all the edges that need to be changed
+     * @return DEdge array
+     */
+    public DEdge[] getEdgesChanged()
+    {
+        // return shallow clone
+        ArrayList<DEdge> clone = new ArrayList(edges);
+        return clone.toArray(new DEdge[clone.size()]);
+    }
+    
+    /**
+     * Return all the changes associated with some edge. If the edge is not part
+     * of the diagnosis then it can return null.
+     * @param edg edge object that has changes attached to it
+     * @return int array with on pos 0 the lb on the change and on pos 1 the ub
+     * on the change.
+     */
+    public int[] getChanges(DEdge edg)
+    {
+        if(changes.containsKey(edg))
+        {
+            int[] chng = changes.get(edg);
+            int[] cpy = new int[2];
+            cpy[0] = chng[0];
+            cpy[1] = chng[1];
+            return cpy;
+        }
+        else
+        {
+            for(DEdge changeEdge : edges)
+            {
+                if(edg.isSimilar(changeEdge))
+                    return getChanges(changeEdge);
+            }
+        }
+        return null;
+    }
+    
+    /**
      * A simple print diagnosis to system out by printing the vertex start+end and
      * the change in [lowerbound,upperbound] for all the partial diagnosis in this full
      * diagnosis
@@ -180,5 +219,54 @@ public class Diagnosis implements Comparable<Diagnosis>
             }
         }
         return out;
+    }
+    
+    /**
+     * Quick and easy method for applying a diagnosis to some graph. It will
+     * apply minimal change to each of the edges marked as malfunctioning.
+     * It can not check if some diagnosis belongs to a graph so be careful!
+     * @param d A Diagnosis object
+     * @param in a Graph object to change with the use of some diagnosis
+     * @return new Graph object (so no old object references, use id's)
+     */
+    public static Graph applyDiagnosis(Diagnosis d, Graph in)
+    {
+        Graph newGr = new Graph();
+        for(Vertex oldV: in.listAllVertices())
+            newGr.addVertex(oldV);
+        DEdge[] oldEdges = in.listAllEdges();
+        ArrayList<DEdge> changeEdges = d.edges;
+        for(DEdge oldE : oldEdges)
+        {
+            boolean addChange = false;
+            int[] oldIds = {oldE.getStart().getID(), oldE.getEnd().getID()};
+            for(DEdge changeE : changeEdges)
+            {
+                if(oldIds[0] == changeE.getStart().getID())
+                {
+                    if(oldIds[1] == changeE.getEnd().getID())
+                    {
+                        int[] chng = d.changes.get(changeE);
+                        Vertex start = newGr.getVertex(oldIds[0]);
+                        Vertex end = newGr.getVertex(oldIds[1]);
+                        newGr.addEdge(start, end,
+                                (oldE.getLowerb()+chng[0]),
+                                (oldE.getUpperb()+chng[0]),
+                                oldE.isContingent());
+                        addChange = true;
+                        // changes both the upper and lower bound by the minimal 
+                        // amount
+                    }
+                }
+            }
+            if(!addChange)
+            {
+                Vertex start = newGr.getVertex(oldIds[0]);
+                Vertex end = newGr.getVertex(oldIds[1]);
+                newGr.addEdge(start, end, oldE.getLowerb(),oldE.getUpperb(),
+                        oldE.isContingent());
+            }
+        }
+        return newGr;
     }
 }

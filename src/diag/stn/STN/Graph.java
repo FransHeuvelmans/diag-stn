@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 /**
@@ -267,6 +268,17 @@ public class Graph
     }
     
     /**
+     * Return a (pseudo) randomly picked edge from the set of all edges
+     * @return DEdge object ref
+     */
+    public DEdge randomEdge()
+    {
+        Random randie = new Random();
+        int randEdge = randie.nextInt(edges.size());
+        return edges.toArray(new DEdge[edges.size()])[randEdge];
+    }
+    
+    /**
      * Is there an edge going from 1 vertex to the other
      * @param fro Staring Vertex
      * @param to Destination/ending Vertex
@@ -283,6 +295,27 @@ public class Graph
                 return true;
         }
         return false;
+    }
+    
+    /**
+     * Returns the edge between two vertices if there is such an edge and the
+     * vertex objects are the same as used by the Graph object.
+     * @param fro Vertex object From 
+     * @param to Vertex object To
+     * @return DEdge object ref - can return null
+     */
+    public DEdge getDirectEdge(Vertex fro, Vertex to)
+    {
+         Set<DEdge> edges = map.get(fro);
+        if(edges==null) {
+            return null;
+        }
+        for(DEdge edg : edges)
+        {
+            if(edg.getEnd().equals(to)) // ? need similar ??
+                return edg;
+        }
+        return null;
     }
     
     /**

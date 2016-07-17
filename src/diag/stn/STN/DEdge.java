@@ -189,5 +189,14 @@ public class DEdge
         return hazard;
     }
     
+    public boolean isSimilar(DEdge other)
+    {
+        if(this.start.getID() == other.start.getID())
+            if(this.end.getID() == other.end.getID())
+                if(this.plowerbound == other.plowerbound &&
+                        this.pupperbound == other.pupperbound)
+                    return true;
+        return false;
+    }
     
 }
