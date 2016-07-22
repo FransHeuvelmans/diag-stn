@@ -34,8 +34,8 @@ import org.yaml.snakeyaml.*;
  */
 public class DiagSTN
 {
-    public static final boolean PRINTACC = true;
-    public static final boolean PRINTWARNING = true;
+    public static final boolean PRINTACC = false;
+    public static final boolean PRINTWARNING = false;
     public static final boolean IGNOREINCONSIST = false;
     
     /**
@@ -49,11 +49,12 @@ public class DiagSTN
             return;
         }
         
-        testCase1();
+         testCase1();
         // testCase2();
         // testCase3();
         // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
+        // runRandomGen();
         //runSORandomGen();
         //runBenchmark();
     }
@@ -115,14 +116,14 @@ public class DiagSTN
         
     }
     
-    public static void runRandomGen()
+    public static boolean runRandomGen()
     {
         // for now no input variables (maybe later catch commandline input)
         
         GraphGenerator gen = new GraphGenerator();
         
-        //GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, false);
-        GraphObs strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 1, false);
+        GraphObs strct = gen.generateBAGraph(200, 3, false, 2, 5, 10, false);
+        //GraphObs strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 1, false);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -130,19 +131,21 @@ public class DiagSTN
         }
         
         al.generatePaths();
-        al.printPaths();
+        //al.printPaths();
         al.propagateWeights();
-        al.printWeights();
-        al.generateDiagnosis();
-        al.printDiagnosis();
+        //al.printWeights();
+        Diagnosis[] diag = al.generateDiagnosis();
+        //al.printDiagnosis();
+        //CorrectCheck.printErrorsIntroduced(strct);
+        return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     
     public static void runSORandomGen()
     {
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, true);
-        //GraphObs strct = gen.generatePlanlikeGraph(20, 20, 30, 2, 3, 2, 1, true);
+        //GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, true);
+        GraphObs strct = gen.generatePlanlikeGraph(20, 20, 30, 2, 3, 2, 1, true);
         Analyst al = new SOAnalyst(strct.graph);
         for(Observation ob : strct.observations)
         {
