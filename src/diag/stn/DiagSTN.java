@@ -34,9 +34,10 @@ import org.yaml.snakeyaml.*;
  */
 public class DiagSTN
 {
-    public static final boolean PRINTACC = false;
+    public static final boolean PRINTACC = true;
     public static final boolean PRINTWARNING = false;
     public static final boolean IGNOREINCONSIST = false;
+    public static final boolean PATHPRINT = false;
     
     /**
      * @param args the command line arguments
@@ -48,15 +49,18 @@ public class DiagSTN
             readAndProcess(args[0]);
             return;
         }
+        String out = "";
         
          testCase1();
         // testCase2();
         // testCase3();
         // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-        // runRandomGen();
-        //runSORandomGen();
+        // out = "" + runRandomGen();
+        // out = "" + runSORandomGen();
         //runBenchmark();
+        
+        // System.out.println("Right answer found: " + out);
     }
     
     public static void readAndProcess(String file)
@@ -122,8 +126,8 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(200, 3, false, 2, 5, 10, false);
-        //GraphObs strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 1, false);
+        //GraphObs strct = gen.generateBAGraph(200, 3, false, 2, 5, 10, false);
+        GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 10, false);
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -131,21 +135,21 @@ public class DiagSTN
         }
         
         al.generatePaths();
-        //al.printPaths();
+        al.printPaths();
         al.propagateWeights();
-        //al.printWeights();
+        al.printWeights();
         Diagnosis[] diag = al.generateDiagnosis();
-        //al.printDiagnosis();
+        al.printDiagnosis();
         //CorrectCheck.printErrorsIntroduced(strct);
         return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     
-    public static void runSORandomGen()
+    public static boolean runSORandomGen()
     {
         GraphGenerator gen = new GraphGenerator();
         
-        //GraphObs strct = gen.generateBAGraph(120, 3, false, 2, 1, true);
-        GraphObs strct = gen.generatePlanlikeGraph(20, 20, 30, 2, 3, 2, 1, true);
+        //GraphObs strct = gen.generateBAGraph(200, 3, false, 2, 5, 10, true);
+        GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 10, true);
         Analyst al = new SOAnalyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -155,8 +159,9 @@ public class DiagSTN
         al.generatePaths();
         al.printPaths();
         al.printWeights();
-        al.generateDiagnosis();
+        Diagnosis[] diag = al.generateDiagnosis();
         al.printDiagnosis();
+        return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     
     public static void runBenchmark()
@@ -181,7 +186,7 @@ public class DiagSTN
         for(int i = 0; i < iter; i++)
         {
             //strct = gen.generateBAGraph(200, 3, true, 2, 1, true);
-            strct = gen.generatePlanlikeGraph(9, 23, 27, 2, 2, 2, 1, true);
+            strct = gen.generatePlanlikeGraph(9, 23, 27, 2, 2, 2, 5, 10, true);
             
             if(strct.observations.size() < 1)
             {

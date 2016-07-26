@@ -277,7 +277,7 @@ public class GraphGenerator
             Vertex oStartV = grOb.graph.getVertex(falseO.get(it)[0].getID());
             Vertex oEndV = grOb.graph.getVertex(falseO.get(it)[1].getID());
             GraphPath startPath = new GraphPath(oStartV);
-            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph, DiagSTN.PATHPRINT);
             if(boundsFound.size() > 0)
             {
                 DEdge oldMalfuncEdg = falseEdges.get(it);
@@ -416,7 +416,7 @@ public class GraphGenerator
     }
     
     // Returns a list of predicted bounds on a path
-    private ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, Graph graph)
+    private ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, Graph graph, boolean printcheck)
     {
         //g.smallPrint();
         int dlb,dub;
@@ -424,7 +424,9 @@ public class GraphGenerator
         // combine generatePaths & propagateWeights
         LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(g.getLastV());
         
-         if(edgeExp == null || (edgeExp.size() < 1))
+        if(printcheck)
+            g.smallPrint();
+        if(edgeExp == null || (edgeExp.size() < 1))
             return pathLbUbs; // dead end!
         for(DEdge de : edgeExp)
         {
@@ -445,7 +447,7 @@ public class GraphGenerator
             if(!g.edgeUsed(de))  // shouldn't be part of current path(takes)
             {
                 g.addStep(de, de.getEnd());
-                returnedLbUbs = pathCalc(g,dlb,dub, end, graph);
+                returnedLbUbs = pathCalc(g,dlb,dub, end, graph, printcheck);
                 pathLbUbs.addAll(returnedLbUbs);
                 g.removeLast();
             }
@@ -764,7 +766,10 @@ public class GraphGenerator
             Vertex oStartV = grOb.graph.getVertex(falseO.get(it)[0].getID());
             Vertex oEndV = grOb.graph.getVertex(falseO.get(it)[1].getID());
             GraphPath startPath = new GraphPath(oStartV);
-            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
+            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph, DiagSTN.PATHPRINT);
+            if(DiagSTN.PATHPRINT)
+                System.out.println("Paths found between " + oStartV.getName() +
+                        "and " + oEndV.getName() + " : " + boundsFound.size());
             if(boundsFound.size() > 0)
             {
                 DEdge oldMalfuncEdg = falseEdges.get(it);
@@ -1113,7 +1118,7 @@ public class GraphGenerator
                 }
                 else
                 {
-                    ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, cas.fromV, g);
+                    ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, cas.fromV, g, false);
                     boufou = combinePaths(boundsFound); // Should be ok since it has been found
                     cas.lb = boufou[0];
                     cas.ub = boufou[1];
@@ -1346,4 +1351,117 @@ public class GraphGenerator
         return outp;
     }
     
+    /**
+     * Adds true observations to a diagnosis problem. Note that only 1 path is
+     * used for the prediction value (ie. longer paths will add more false 
+     * observation paths than true ones)
+     * @param go GraphObs object with all the ingredients for a Diagnosis problem
+     * @param num Number of true observations
+     * @param size path-length of the observations added
+     */
+    public void addTrueObs(GraphObs go, int num, int size)
+    {
+        LinkedList<DEdge[]> trueO = new LinkedList();
+        LinkedList<DEdge> doNotUse = new LinkedList();
+        
+        for(DEdge falseEdge: go.errorEdges)
+            doNotUse.add(falseEdge);
+        
+        int trys = 100000; 
+        // Trys to add observations of a certain length but not sure if its
+        // possible 
+        int currentLen;
+        
+        Graph graph = go.graph;
+        Random rand = new Random();
+        
+        while(num > 0 && trys > 0)
+        {
+            currentLen = size;
+            DEdge correctEdge = graph.randomEdge();
+            if(doNotUse.contains(correctEdge))
+                continue;
+            Vertex end = correctEdge.getEnd();
+            Vertex start = correctEdge.getStart();
+            LinkedList<DEdge> path = new LinkedList();
+            path.add(correctEdge);
+            currentLen--;
+            // First try to add edges to the end of the obs path
+            while(currentLen > 0)
+            {
+                LinkedList<Vertex> possibilities = graph.adjacentNodes(end);
+                if(possibilities == null || possibilities.size() < 1)
+                    break;
+                Vertex newEnd = possibilities.get(rand.nextInt(possibilities.size()));
+                DEdge de = graph.getDirectEdge(end, newEnd);
+                if(doNotUse.contains(de))
+                {
+                    if(possibilities.size() < 2)
+                        break; // can only take already malfunctioning edge
+                    else
+                        continue; // try another path!
+                }
+                path.add(de);
+                end = newEnd;
+                currentLen--;
+            }
+            // tried as much as possible, time to add to the front
+            while(currentLen > 0)
+            {
+                LinkedList<Vertex> possibilities = graph.incomingNodes(start);
+                if(possibilities == null || possibilities.size() < 1)
+                    break;
+                
+                Vertex newStart = possibilities.get(rand.nextInt(possibilities.size()));
+                DEdge de = graph.getDirectEdge(newStart, start);
+                if(doNotUse.contains(de))
+                {
+                    if(possibilities.size() < 2)
+                        break; // can only take already malfunctioning edge
+                    else
+                        continue; // try another path!
+                }
+                path.push(de);
+                start = newStart;
+                currentLen--;
+            }
+            if(currentLen < 1)
+            {
+                // its good observation!
+                Vertex[] newObs = new Vertex[2];
+                newObs[0] = start;
+                newObs[1] = end;
+                trueO.add(path.toArray(new DEdge[path.size()]));
+                
+                for(DEdge de : path)
+                {
+                    if(!doNotUse.contains(de))
+                        doNotUse.add(de);
+                }
+                DEdge[] pathE = path.toArray(new DEdge[path.size()]);
+                trys--;
+                num--;
+            }
+            else
+                trys--;
+        }
+        
+        // Now add all found true observations to the graphObs (with the correct
+        // times!)
+        for(DEdge[] truePath : trueO)
+        {
+            int lb = 0;
+            int ub = 0;
+            for(DEdge de : truePath)
+            {
+                lb += de.getLowerb();
+                ub += de.getUpperb();
+            }
+            Vertex start = truePath[0].getStart();
+            Vertex end = truePath[truePath.length - 1].getEnd();
+            
+            Observation newTrueObs = new Observation(start, end, lb, ub);
+            go.observations.add(newTrueObs);
+        }
+    }
 }

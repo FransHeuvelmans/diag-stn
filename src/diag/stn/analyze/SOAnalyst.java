@@ -15,6 +15,7 @@
  */
 package diag.stn.analyze;
 
+import diag.stn.DiagSTN;
 import diag.stn.analyze.GraphPath;
 import diag.stn.analyze.Diagnosis;
 import diag.stn.STN.*;
@@ -102,7 +103,7 @@ public class SOAnalyst extends Analyst
         for(Observation o : observations)
         {
             o.moreAccurate = false;
-            ob.fixneeded = false;
+            o.fixneeded = false;
             int[] intersect = new int[2];
             
             LinkedHashSet<GraphPath> pathsSet = obsPaths.get(o);
@@ -179,8 +180,12 @@ public class SOAnalyst extends Analyst
         // combine generatePaths & propagateWeights
         LinkedHashSet<DEdge> edgeExp = graph.possibleEdges(g.getLastV());
         
-         if(edgeExp == null)
+        if(DiagSTN.PATHPRINT)
+            g.smallPrint();
+        if(edgeExp == null)
             return; // dead end!
+        if(DiagSTN.PATHPRINT)
+            System.out.println(edgeExp.size());
         for(DEdge de : edgeExp)
         {
             dlb = 0;
@@ -191,6 +196,12 @@ public class SOAnalyst extends Analyst
             {
                 if(de.getEnd().equals(o.endV))
                 {
+                    if(DiagSTN.PATHPRINT)
+                    {
+                        System.out.println("SOAnalyst-pathCalc found path from"
+                            + g.getStepV(0).getName() + " to " + 
+                                o.endV.getName());
+                    }
                     g.addStep(de, de.getEnd());
                     LinkedHashSet<GraphPath> paths = obsPaths.get(o);
                     if(paths == null) 
@@ -211,7 +222,8 @@ public class SOAnalyst extends Analyst
                         smallerThanObs.put(copyPath, Boolean.FALSE);
 
                     diffStore.put(copyPath, lbub);
-                    // !!!! WARNING, STILL NEEDS CODE TO COMBINE CHANGES
+                    g.removeLast();
+                    // STILL NEEDS CODE TO COMBINE CHANGES
                     // TO A PROPER lbub (for all paths on 1 obs)
                 }
             }
@@ -219,9 +231,8 @@ public class SOAnalyst extends Analyst
             {
                 g.addStep(de, de.getEnd());
                 pathCalc(g,dlb,dub);
-            }
-            if(g.stepSize() > 1)
                 g.removeLast();
+            }
         }
         
         /**
