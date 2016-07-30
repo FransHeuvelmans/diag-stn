@@ -109,8 +109,8 @@ public class GraphPath
     }
     
     /**
-     * A copy value that creates a new GraphPath but uses the same object references
-     * inside the new GraphPath object.
+     * A copy value that creates a new GraphPath but uses the same object 
+     * references inside the new GraphPath object. (shallow copy)
      * @return new GraphPath object that has the same references.
      */
     public GraphPath copy()
