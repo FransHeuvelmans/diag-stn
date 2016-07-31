@@ -35,9 +35,9 @@ import org.yaml.snakeyaml.*;
 public class DiagSTN
 {
     public static final boolean PRINTACC = true;
-    public static final boolean PRINTWARNING = false;
+    public static final boolean PRINTWARNING = true;
     public static final boolean IGNOREINCONSIST = false;
-    public static final boolean PATHPRINT = false;
+    public static final boolean PATHPRINT = true;
     
     /**
      * @param args the command line arguments
@@ -51,16 +51,22 @@ public class DiagSTN
         }
         String out = "";
         
-         testCase1();
+        // testCase1();
         // testCase2();
         // testCase3();
         // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-        // out = "" + runRandomGen();
+         out = "" + runRandomGen();
         // out = "" + runSORandomGen();
         //runBenchmark();
         
-        // System.out.println("Right answer found: " + out);
+        /*boolean ans;
+        do
+        {
+           ans = runRandomGen();
+        }while(ans);*/
+        
+        System.out.println("Right answer found: " + out);
     }
     
     public static void readAndProcess(String file)
@@ -126,8 +132,12 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        //GraphObs strct = gen.generateBAGraph(200, 3, false, 2, 5, 10, false);
-        GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 10, false);
+        GraphObs strct = gen.generateBAGraph(200, 2, false, 4, 5, 10, false);
+        //GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 10, false);
+        while(!strct.success)
+        {
+            strct = gen.generateBAGraph(200, 2, false, 4, 5, 10, false);
+        }
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -140,7 +150,7 @@ public class DiagSTN
         al.printWeights();
         Diagnosis[] diag = al.generateDiagnosis();
         al.printDiagnosis();
-        //CorrectCheck.printErrorsIntroduced(strct);
+        CorrectCheck.printErrorsIntroduced(strct);
         return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     

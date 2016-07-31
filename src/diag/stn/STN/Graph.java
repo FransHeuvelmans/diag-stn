@@ -201,9 +201,9 @@ public class Graph
     public LinkedList<Vertex> adjacentNodes(Vertex last)
     {
         LinkedHashSet<DEdge> edges = map.get(last);
-        if(edges == null)
-            return null;
         LinkedList<Vertex> adjacent = new LinkedList<>();
+        if(edges == null)
+            return adjacent;
         for(DEdge edg : edges)
         {
             adjacent.add(edg.getEnd());

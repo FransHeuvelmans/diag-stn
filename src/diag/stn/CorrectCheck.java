@@ -58,6 +58,10 @@ public  class CorrectCheck
             boolean hasAllErrors = true;
             for(int i = 0; i < grOb.errorEdges.size(); i++)
             {
+                int trueError = grOb.errorDiffs.get(i);
+                if(trueError == 0)
+                    continue; // no error introduced TODO improve checking
+                
                 // Needs to have used each malfunctioning edge in the GraphObs
                 // ie. each introduced error
                 DEdge errorEdg = grOb.errorEdges.get(i);
@@ -69,7 +73,6 @@ public  class CorrectCheck
                 else    // its in there but does it have the correct bounds?
                 {
                     int[] diagBounds = d.getChanges(errorEdg);
-                    int trueError = grOb.errorDiffs.get(i);
                     if(trueError < diagBounds[0] || trueError > diagBounds[1])
                     {
                         hasAllErrors = false;

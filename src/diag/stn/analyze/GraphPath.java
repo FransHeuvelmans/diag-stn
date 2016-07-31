@@ -109,6 +109,15 @@ public class GraphPath
     }
     
     /**
+     * Quick method for returning the edges in order used by this graphpath
+     * @return Array of DEdge objects
+     */
+    public DEdge[] toEdges()
+    {
+        return edges.toArray(new DEdge[edges.size()]);
+    }
+    
+    /**
      * A copy value that creates a new GraphPath but uses the same object 
      * references inside the new GraphPath object. (shallow copy)
      * @return new GraphPath object that has the same references.
