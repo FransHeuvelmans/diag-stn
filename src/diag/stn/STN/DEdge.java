@@ -29,6 +29,8 @@ public class DEdge
     private boolean hazard;
     private boolean contingent;
     
+    private ArrayList<int[]> posConChanges;
+    
     /**
      * Constructor of a separate directed edge
      * @param s start vertex
@@ -41,6 +43,8 @@ public class DEdge
         posChanges = new ArrayList<>();
         hazard = false;
         contingent = false;
+        
+        posConChanges = new ArrayList();
     }
     
     /**
@@ -58,6 +62,8 @@ public class DEdge
         pupperbound = ub;
         posChanges = new ArrayList<>();
         hazard = false;
+        
+        posConChanges = new ArrayList();
     }
     
     /**
@@ -73,6 +79,21 @@ public class DEdge
         posCha[0] = lowerboundChange; // for now assume that both can be pos/neg
         posCha[1] = upperboundChange; // and no checks !
         posChanges.add(posCha);
+    }
+    
+    /**
+     * Adds a possible change to the edge that can be used side by side by
+     * consistency based diagnosis without having effect on the normal MAC 
+     * diagnosis.
+     * @param lowerboundChange
+     * @param upperboundChange 
+     */
+    public void addPossibleConChange(int lowerboundChange, int upperboundChange)
+    {
+        int[] posCha = new int[2];
+        posCha[0] = lowerboundChange; // for now assume that both can be pos/neg
+        posCha[1] = upperboundChange; // and no checks !
+        posConChanges.add(posCha);
     }
     
     /**
@@ -102,6 +123,24 @@ public class DEdge
             changesPos.add(x);
         }
         return changesPos; // Dirty for now but separate STN from diagnosis!
+    }
+    
+    /**
+     * Returns the list of possible changes meant for consistency based diagnosis
+     * with the use of fault models.
+     * @return 
+     */
+    public ArrayList<int[]> getPossibleConChanges()
+    {
+        ArrayList<int[]> changesPos = new ArrayList<>(posConChanges.size());
+        for(int[] chng: posConChanges)
+        {
+            int[] x = new int[2];
+            x[0] = chng[0];
+            x[1] = chng[1];
+            changesPos.add(x);
+        }
+        return changesPos;
     }
     
     /**

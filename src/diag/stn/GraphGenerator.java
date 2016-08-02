@@ -239,11 +239,15 @@ public class GraphGenerator
                 for(GraphPath gp : paths)
                 {
                     int fault = 0;
+                    boolean hasEdgMisbehave = false;
                     DEdge[] edges = gp.toEdges();
                     for(DEdge de : edges)
                     {
                         if(de.equals(misbehave))
+                        {
                             fault++;
+                            hasEdgMisbehave = true;
+                        }
                         for(Falsie flsi : falseIntentions)
                         {
                             if(de.equals(flsi.falseE))
@@ -256,6 +260,13 @@ public class GraphGenerator
                         continue addObservations;
                         // Dont add some observation if there are multiple faults
                         // on one of its paths!
+                    }
+                    else if(hasEdgMisbehave && (edges.length != path.size()))
+                    {
+                        // if it uses the faulty edge but has a different length
+                        // then strong probability answer is inconsistent
+                        trys--;
+                        continue addObservations;
                     }
                 }
                 

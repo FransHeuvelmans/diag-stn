@@ -56,15 +56,15 @@ public class DiagSTN
         // testCase3();
         // testInitExt();
         // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-         out = "" + runRandomGen();
+        // out = "" + runRandomGen();
         // out = "" + runSORandomGen();
         //runBenchmark();
         
-        /*boolean ans;
+        boolean ans;
         do
         {
            ans = runRandomGen();
-        }while(ans);*/
+        }while(ans);
         
         System.out.println("Right answer found: " + out);
     }
@@ -132,11 +132,11 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(200, 2, false, 4, 5, 10, false);
+        GraphObs strct = gen.generateBAGraph(30, 2, false, 2, 5, 20, true);
         //GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 10, false);
         while(!strct.success)
         {
-            strct = gen.generateBAGraph(200, 2, false, 4, 5, 10, false);
+            strct = gen.generateBAGraph(30, 2, false, 2, 5, 20, true);
         }
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)

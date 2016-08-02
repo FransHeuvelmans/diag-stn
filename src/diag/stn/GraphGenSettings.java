@@ -16,8 +16,8 @@
 package diag.stn;
 
 /**
- *
- * @author frans
+ * Settings used for generating sample Simple Temporal Diagnosis Problems.
+ * @author Frans van den Heuvel
  */
 public class GraphGenSettings {
     
@@ -60,7 +60,17 @@ public class GraphGenSettings {
     
     public void BAGraph()
     {
-        // run defaults settings
+        // use some defaults settings
+        type = BAGRAPH;
+        
+        this.vertexSize = 50;
+        this.BALinksPerVertexAddition = 2;
+        this.onlyMaxAdditions = false;
+        
+        this.numObservations = 2;
+        this.observationLength = 5;
+        this.difference = 10;
+        this.timeSyncT0 = false;
     }
     
     public void BAGraph(int size, int linksPerStep, boolean onlymax, 
@@ -81,6 +91,8 @@ public class GraphGenSettings {
     public void planlikeGraph()
     {
         // set some sane default settings
+        
+        type = PLANLIKEGRAPH;
     }
     
     public void planlikeGraph(int line, int linelb, int lineub, 
