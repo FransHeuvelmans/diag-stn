@@ -100,6 +100,8 @@ public class GraphGenerator
         
         int oriObservations = observations;
         
+        // First step is to generate the basic graph with correct form but 
+        // without initialized bounds (since we might need to add a T0 later)
         id = 0;
         Graph gr = new Graph();
         gr.reverseNegativeEdge(false);
@@ -147,183 +149,17 @@ public class GraphGenerator
             }*/
         }
         
-        /**
-         * First a graph is generated, 
-         * after which the starting and ending nodes of the observations
-         * are needed for adding a possible T0. (and add this possible t0)
-         * Only _then_ assign intervals to each of the edges (init graph).
-         * This is done in a separate step using a linear ordering (topological 
-         * sort) WARNING -> might still lose edges if consistency is not 
-         * possible!
-         */
+        // Store settings
+        GraphGenSettings gs = new GraphGenSettings();
+        gs.BAGraph(size, linksPerStep, onlymax, oriObservations, obsLength, diff, 
+                zeroPoint);
         
-        LinkedList<Falsie> falseIntentions = new LinkedList();
-        LinkedList<DEdge> doNotUse = new LinkedList();
-        // Do not use edges which are path of the obs-path of another fault
-        // (so some obs will not have 2 faults on 1 path!)
-        
-        int trys = 200000; 
-        // Try to add observations of a certain length but not sure if its
-        // possible 
-        int currentLen;
-        
-        addObservations:
-        while(observations > 0 && trys > 0)
-        {
-            currentLen = obsLength;
-            DEdge misbehave = gr.randomEdge();
-            if(doNotUse.contains(misbehave))
-                continue;
-            Vertex end = misbehave.getEnd();
-            Vertex start = misbehave.getStart();
-            LinkedList<DEdge> path = new LinkedList();
-            path.add(misbehave);
-            currentLen--;
-            // First try to add edges to the end of the obs path
-            while(currentLen > 0)
-            {
-                LinkedList<Vertex> possibilities = gr.adjacentNodes(end);
-                if(possibilities == null || possibilities.size() < 1)
-                    break;
-                Vertex newEnd = possibilities.get(rand.nextInt(possibilities.size()));
-                DEdge de = gr.getDirectEdge(end, newEnd);
-                if(doNotUse.contains(de))
-                {
-                    HashSet<DEdge> possibleEdges = gr.possibleEdges(end);
-                    for(DEdge eddie : possibleEdges)
-                    {
-                        if(doNotUse.contains(eddie))
-                            possibilities.remove(eddie.getEnd());
-                    }
-                    if(possibilities.size() < 1)
-                        break;
-                    else
-                        continue; // try another path!
-                }
-                path.add(de);
-                end = newEnd;
-                currentLen--;
-            }
-            // tried as much as possible, time to add to the front
-            while(currentLen > 0)
-            {
-                LinkedList<Vertex> possibilities = gr.incomingNodes(start);
-                if(possibilities == null || possibilities.size() < 1)
-                    break;
+        // Then the errors are generated (again without bounds) randomly and
+        // if a T0 is needed, then this is added
+        LinkedList<Falsie> falseIntentions = generateErrors(gr, gs);
                 
-                Vertex newStart = possibilities.get(rand.nextInt(possibilities.size()));
-                DEdge de = gr.getDirectEdge(newStart, start);
-                if(doNotUse.contains(de))
-                {
-                    HashSet<DEdge> possibleEdges = gr.incomingEdges(start);
-                    for(DEdge eddie : possibleEdges)
-                    {
-                        if(doNotUse.contains(eddie))
-                            possibilities.remove(eddie.getStart()); 
-                    }
-                    if(possibilities.size() < 1)
-                        break;
-                    else
-                        continue; // try another path!
-                }
-                path.push(de);
-                start = newStart;
-                currentLen--;
-            }
-            if(currentLen < 1)
-            {
-                // First check if any of the paths for this observation will have 
-                // more than 1 fault
-                GraphPath st = new GraphPath(start);
-                ArrayList<GraphPath> paths = obsPaths(st, end, gr);
-                for(GraphPath gp : paths)
-                {
-                    int fault = 0;
-                    boolean hasEdgMisbehave = false;
-                    DEdge[] edges = gp.toEdges();
-                    for(DEdge de : edges)
-                    {
-                        if(de.equals(misbehave))
-                        {
-                            fault++;
-                            hasEdgMisbehave = true;
-                        }
-                        for(Falsie flsi : falseIntentions)
-                        {
-                            if(de.equals(flsi.falseE))
-                                fault++;
-                        }
-                    }
-                    if(fault > 1)
-                    {
-                        trys--;
-                        continue addObservations;
-                        // Dont add some observation if there are multiple faults
-                        // on one of its paths!
-                    }
-                    else if(hasEdgMisbehave && (edges.length != path.size()))
-                    {
-                        // if it uses the faulty edge but has a different length
-                        // then strong probability answer is inconsistent
-                        trys--;
-                        continue addObservations;
-                    }
-                }
-                
-                
-                // its good observation!
-                Falsie f = new Falsie();
-                Vertex[] newObs = new Vertex[2];
-                newObs[0] = start;
-                newObs[1] = end;
-                f.falSE = newObs;
-                f.falseE = misbehave;
-                f.falsePath = path.toArray(new DEdge[path.size()]);
-                falseIntentions.add(f);
-                // Always add the edge -> means obs and edge are connected
-                
-                // Any edge used on this obs-path may not be used in some other
-                // obs-path to make sure no inconsistent observations are 
-                // generated (or atleast no obs-path with 2 faults!)
-                for(DEdge de : f.falsePath)
-                {
-                    if(!doNotUse.contains(de))
-                        doNotUse.add(de);
-                }
-                // Al other paths on the obs-start/end pair with an error need 
-                // to be added as well
-                for(GraphPath gp : paths)
-                {
-                    for(Falsie flsi : falseIntentions)
-                    {
-                        DEdge[] edges = gp.toEdges();
-                        List<DEdge> edgz = Arrays.asList(edges);
-                        if(edgz.contains(flsi.falseE))
-                        {
-                            for(DEdge alsoNotUse : edgz)
-                            {
-                                if(!doNotUse.contains(alsoNotUse))
-                                    doNotUse.add(alsoNotUse);
-                            }
-                        }
-                    }
-                }
-                
-                trys--;
-                observations--;
-                if(DiagSTN.PRINTWARNING)
-                {
-                    System.out.print("Adding obs: " + start.getID() + "," + 
-                            end.getID());
-                    System.out.print(" faulty edge: " + 
-                            misbehave.getStart().getID() + "," + 
-                            misbehave.getEnd().getID() + "\n");
-                }
-            }
-            else
-                trys--;
-        }
-        System.out.println(falseIntentions.size());
+        // Check if there are errors to diagnose (check because of bruteforce
+        // random add)
         if(falseIntentions.size() < 1)
         {
             /* If it wasnt possible to add any obs then maybe it's time to try 
@@ -332,36 +168,20 @@ public class GraphGenerator
                     --obsLength,diff,zeroPoint);
         }
         
-        if(zeroPoint)
-        {
-            Vertex startSync = new Vertex(Integer.MAX_VALUE,"S");
-            gr.addVertex(startSync);
-            for(Falsie ob : falseIntentions)
-            {
-                Vertex oldstart = ob.falSE[0];
-                List<Vertex> adj = gr.adjacentNodes(startSync);
-                if(!startSync.equals(oldstart)) // If some oldStart hasnt been changed already
-                {
-                    if(adj == null)
-                        gr.addEdge(startSync, oldstart, 0, 0);
-                    else if(!adj.contains(oldstart))
-                        gr.addEdge(startSync, oldstart, 0, 0);
-                }
-                ob.falSE[0] = startSync;
-            }
-        }
-        
+        // Only then with the final Graph can the edges be initialized
+        // WARNING: Edges might dissapear if they cant be added during 
+        // initialization which could in turn break obs so it needs to be tested
         grOb.graph = initializeBounds(gr);
+        
         // WARNING!!! Graph has been build from scratch so old Vertex refs.
         // will not work from this point on!
-
-        // Store settings
-        GraphGenSettings gs = new GraphGenSettings();
-        gs.BAGraph(size, linksPerStep, onlymax, oriObservations, obsLength, diff, 
-                zeroPoint);
         
-        // add the correct observations with initErrors
+        // Using the general position of the generated (Falsie) errors, and an
+        // initialized graph; the obs can also be initialized. Needs quite a few
+        // checks to see if the original path is still there and the bounds of
+        // the errors are consistent
         boolean suc = initializeErrors(grOb, falseIntentions, gs);
+        
         grOb.success = suc;
         grOb.settings = gs;
         // TODO: Make sure this is not some nested function because it saves al
@@ -688,208 +508,53 @@ public class GraphGenerator
             }
         }
         
-        // Create the outline for the observations (same code as BAGraphGen 4now)
-        LinkedList<Vertex[]> falseO = new LinkedList();
-        LinkedList<DEdge> falseEdges = new LinkedList();
-        LinkedList<DEdge[]> falsePaths = new LinkedList(); 
-        LinkedList<DEdge> doNotUse = new LinkedList();
-        int trys = 100000; 
-        // Try to add observations of a certain length but not sure if its
-        // possible 
-        int currentLen;
+        // Store settings
+        GraphGenSettings gs = new GraphGenSettings();
+        gs.planlikeGraph(orLine, linelb, lineub, maxLineCon, maxVertCon, orObs, 
+                obsLength, diff, zeroPoint);
         
-        while(observations > 0 && trys > 0)
-        {
-            currentLen = obsLength;
-            DEdge misbehave = gr.randomEdge();
-            if(doNotUse.contains(misbehave))
-                continue;
-            Vertex end = misbehave.getEnd();
-            Vertex start = misbehave.getStart();
-            LinkedList<DEdge> path = new LinkedList();
-            path.add(misbehave);
-            currentLen--;
-            // First try to add edges to the end of the obs path
-            while(currentLen > 0)
-            {
-                LinkedList<Vertex> possibilities = gr.adjacentNodes(end);
-                if(possibilities == null || possibilities.size() < 1)
-                    break;
-                Vertex newEnd = possibilities.get(rand.nextInt(possibilities.size()));
-                DEdge de = gr.getDirectEdge(end, newEnd);
-                if(falseEdges.contains(de))
-                {
-                    if(possibilities.size() < 2)
-                        break; // can only take already malfunctioning edge
-                    else
-                        continue; // try another path!
-                }
-                path.add(de);
-                end = newEnd;
-                currentLen--;
-            }
-            // tried as much as possible, time to add to the front
-            while(currentLen > 0)
-            {
-                LinkedList<Vertex> possibilities = gr.incomingNodes(start);
-                if(possibilities == null || possibilities.size() < 1)
-                    break;
+        // Then the errors are generated (again without bounds) randomly and
+        // if a T0 is needed, then this is added
+        LinkedList<Falsie> falseIntentions = generateErrors(gr, gs);
                 
-                Vertex newStart = possibilities.get(rand.nextInt(possibilities.size()));
-                DEdge de = gr.getDirectEdge(newStart, start);
-                if(falseEdges.contains(de))
-                {
-                    if(possibilities.size() < 2)
-                        break; // can only take already malfunctioning edge
-                    else
-                        continue; // try another path!
-                }
-                path.push(de);
-                start = newStart;
-                currentLen--;
-            }
-            if(currentLen < 1)
-            {
-                // its good observation!
-                Vertex[] newObs = new Vertex[2];
-                newObs[0] = start;
-                newObs[1] = end;
-                falseO.add(newObs);
-                falseEdges.add(misbehave);
-                // Always add the edge -> means obs and edge are connected
-                GraphPath g = new GraphPath(start);
-                /*
-                ArrayList<DEdge> observationEdges = pathEdges(g, end, gr, false);
-                for(DEdge de : observationEdges)
-                {
-                    if(!doNotUse.contains(de))
-                        doNotUse.add(de);
-                }
-                TODO: REDO REDO REDO */
-                DEdge[] pathE = path.toArray(new DEdge[path.size()]);
-                falsePaths.add(pathE);
-                trys--;
-                observations--;
-                if(DiagSTN.PRINTWARNING)
-                {
-                    System.out.print("Adding obs: " + start.getID() + "," + 
-                            end.getID());
-                    System.out.print(" faulty edge: " + 
-                            misbehave.getStart().getID() + "," + 
-                            misbehave.getEnd().getID() + "\n");
-                }
-            }
-            else
-                trys--;
-        }
-        
-        if(falseO.size() < 1)
+        // Check if there are errors to diagnose (check because of bruteforce
+        // random add)
+        if(falseIntentions.size() < 1)
         {
-            // If it wasnt possible, time to try smaller length observations
-            return generatePlanlikeGraph(orLine,linelb,lineub,maxLineCon,
-                    maxVertCon,orObs,obsLength,diff,zeroPoint);
+            /* If it wasnt possible to add any obs then maybe it's time to try 
+             * adding smaller length observations */
+            gs.observationLength--;
+            return generateBAGraph(gs);
         }
         
-        // If a null time point is used (4 sync) then the Vertex and edges need 
-        // to be added to the observation starting vertices
-        if(zeroPoint)
-        {
-            Vertex startSync = new Vertex(Integer.MAX_VALUE,"S");
-            gr.addVertex(startSync);
-            for(Vertex[] ob : falseO)
-            {
-                Vertex oldstart = ob[0];
-                List<Vertex> adj = gr.adjacentNodes(startSync);
-                if(!startSync.equals(oldstart)) // If some oldStart hasnt been changed already
-                {
-                    if(adj == null)
-                        gr.addEdge(startSync, oldstart, 0, 0);
-                    else if(!adj.contains(oldstart))
-                        gr.addEdge(startSync, oldstart, 0, 0);
-                }
-                ob[0] = startSync;
-            }
-        }
-        
+        // init the graph with the final Vertices
         grOb.graph = initializeBounds(gr);
         
-        // After the bounds are initialized, the actual observations can be added
-        grOb.observations = new LinkedList();
-        grOb.errorEdges = new LinkedList();
-        grOb.errorDiffs = new LinkedList();
-        for(int it = 0; it < falseO.size(); it++)
-        {
-            Vertex oStartV = grOb.graph.getVertex(falseO.get(it)[0].getID());
-            Vertex oEndV = grOb.graph.getVertex(falseO.get(it)[1].getID());
-            GraphPath startPath = new GraphPath(oStartV);
-            ArrayList<int[]> boundsFound = pathCalc(startPath, 0, 0, oEndV, grOb.graph);
-            if(DiagSTN.PATHPRINT)
-                System.out.println("Paths found between " + oStartV.getName() +
-                        "and " + oEndV.getName() + " : " + boundsFound.size());
-            if(boundsFound.size() > 0)
-            {
-                DEdge oldMalfuncEdg = falseEdges.get(it);
-                int fromID = oldMalfuncEdg.getStart().getID();
-                int toID = oldMalfuncEdg.getEnd().getID();
-                DEdge malfuncEdg = grOb.graph.getDirectEdge(
-                        grOb.graph.getVertex(fromID), grOb.graph.getVertex(toID));
-                if(malfuncEdg == null)
-                {
-                    // If there was some path for the observation but the original
-                    // faulty edge is not here so proper checking is not possible
-                    if(DiagSTN.PRINTWARNING)
-                        System.out.println("Couldnt add f edge: " + fromID
-                            + " , " + toID + " malfunctioning edge not found");
-                    return generatePlanlikeGraph(orLine,linelb,lineub,maxLineCon,
-                                    maxVertCon,orObs,obsLength,diff,zeroPoint);
-                }
-                else
-                {   // Check if there still is a path:
-                    // start -> malfuncEdge -> end
-                    DEdge[] falsePath = falsePaths.get(it);
-                    for(DEdge falseE : falsePath)
-                    {
-                        int pathEdgFro = falseE.getStart().getID();
-                        int pathEdgTo = falseE.getEnd().getID();
-                        boolean stillh = grOb.graph.directReach(
-                                grOb.graph.getVertex(pathEdgFro), 
-                                grOb.graph.getVertex(pathEdgTo));
-                        if(!stillh)
-                        {
-                            if(DiagSTN.PRINTWARNING)
-                                System.out.println("Couldnt add f edge: " + 
-                                        fromID + " , " + toID + 
-                                        " error path not found");
-                            return generatePlanlikeGraph(orLine,linelb,lineub,
-                                    maxLineCon,maxVertCon,orObs,obsLength,diff,
-                                    zeroPoint);
-                        }
-                    }
-                }
-                int[] boufou = combinePaths(boundsFound);
-                double transf = ((double) diff) / 100.0;
-                int lbc = (int) (boufou[0] * transf);
-                //int ubc = (int) (boufou[1] * transf);
-                // pick either relative to ub or lb! (cant do both!)
-                
-                // change according to diff-percentage
-                // then save diffs and edge and continuez
-                Observation ob = new Observation(oStartV, oEndV, (lbc + boufou[0]), (lbc + boufou[1]));
-                grOb.observations.add(ob);
-                grOb.errorEdges.add(malfuncEdg);
-                int errorDiff = lbc;
-                grOb.errorDiffs.add(errorDiff);
-            }
-            else
-            {
-                if(DiagSTN.PRINTWARNING)
-                    System.out.println("Couldnt add f obs: " + falseO.get(it)[0].getID()
-                        + " , " + falseO.get(it)[1].getID() + " no path found");
-                return generatePlanlikeGraph(orLine,linelb,lineub,maxLineCon,
-                            maxVertCon,orObs,obsLength,diff,zeroPoint);
-            }
-        }
+        // WARNING!!! Graph has been build from scratch so old Vertex refs.
+        // will not work from this point on!
         
+        // Using the general position of the generated (Falsie) errors, and an
+        // initialized graph; the obs can also be initialized. Needs quite a few
+        // checks to see if the original path is still there and the bounds of
+        // the errors are consistent
+        boolean suc = initializeErrors(grOb, falseIntentions, gs);
+        
+        grOb.success = suc;
+        grOb.settings = gs;
+        // TODO: Make sure this is not some nested function because it saves al
+        if(suc)
+        {
+            boolean chck = checkConsist(grOb);
+            grOb.success = chck;
+        }
+        if(grOb.observations.size() < orObs)
+            grOb.success = false;
+        
+        /**
+         * Much of this code is for now the same as BA-Gen code. Its separate 
+         * because of previous versions. As TODO: make it neatly 1 method with 
+         * multiple network generation sub methods to generate the gr Graph obj 
+         */
         
         return grOb;
     }
@@ -1347,6 +1012,269 @@ public class GraphGenerator
     }
     
     /**
+     * Generates the errors for an uninitialized graph and adds a zero time 
+     * point if it is needed. These errors are not initialized because the graph
+     * might not be.
+     * @param gr Graph object (not initialized)
+     * @param gs Settings for Graph Generation
+     * @return 
+     */
+    private LinkedList<Falsie> generateErrors(Graph gr, GraphGenSettings gs)
+    {
+        Random rand = new Random();
+        Vertex startSync = null;
+        if(gs.timeSyncT0)
+        {
+            startSync = new Vertex(Integer.MAX_VALUE,"S");
+            gr.addVertex(startSync);
+        }
+        
+        LinkedList<Falsie> falseIntentions = new LinkedList();
+        LinkedList<DEdge> doNotUse = new LinkedList();
+        // Do not use edges which are path of the obs-path of another fault
+        // (so some obs will not have 2 faults on 1 path!)
+        
+        int observations = gs.numObservations;
+        int obsLength = gs.observationLength;
+        
+        int trys = 200000;
+        // Try to add observations of a certain length but not sure if its
+        // possible 
+        int currentLen;
+        
+        addObservations:
+        while(observations > 0 && trys > 0)
+        {
+            boolean zeroEdgeAdded = false; 
+            DEdge syncEdge = null;
+            // did this obs add a zeroPoint edge ? If so and the obs can't be
+            // created then the edge needs to be removed!
+            
+            currentLen = obsLength;
+            DEdge misbehave = gr.randomEdge();
+            if(doNotUse.contains(misbehave))
+                continue;
+            Vertex end = misbehave.getEnd();
+            Vertex start = misbehave.getStart();
+            LinkedList<DEdge> path = new LinkedList();
+            path.add(misbehave);
+            currentLen--;
+            // First try to add edges to the end of the obs path
+            while(currentLen > 0)
+            {
+                LinkedList<Vertex> possibilities = gr.adjacentNodes(end);
+                if(possibilities == null || possibilities.size() < 1)
+                    break;
+                Vertex newEnd = possibilities.get(rand.nextInt(possibilities.size()));
+                DEdge de = gr.getDirectEdge(end, newEnd);
+                if(doNotUse.contains(de))
+                {
+                    HashSet<DEdge> possibleEdges = gr.possibleEdges(end);
+                    for(DEdge eddie : possibleEdges)
+                    {
+                        if(doNotUse.contains(eddie))
+                            possibilities.remove(eddie.getEnd());
+                    }
+                    if(possibilities.size() < 1)
+                        break;
+                    else
+                        continue; // try another path!
+                }
+                path.add(de);
+                end = newEnd;
+                currentLen--;
+            }
+            // tried as much as possible, time to add to the front
+            while(currentLen > 0)
+            {
+                LinkedList<Vertex> possibilities = gr.incomingNodes(start);
+                if(possibilities == null || possibilities.size() < 1)
+                    break;
+                
+                Vertex newStart = possibilities.get(rand.nextInt(possibilities.size()));
+                DEdge de = gr.getDirectEdge(newStart, start);
+                if(doNotUse.contains(de))
+                {
+                    HashSet<DEdge> possibleEdges = gr.incomingEdges(start);
+                    for(DEdge eddie : possibleEdges)
+                    {
+                        if(doNotUse.contains(eddie))
+                            possibilities.remove(eddie.getStart()); 
+                    }
+                    if(possibilities.size() < 1)
+                        break;
+                    else
+                        continue; // try another path!
+                }
+                path.push(de);
+                start = newStart;
+                currentLen--;
+            }
+            // If there is a zeroPoint, this needs to be added
+            if(gs.timeSyncT0 && !start.equals(startSync))
+            {
+                // a small check if the first vertex is already the timeSync!
+                
+                // Remember to remove the edge if it was added this iteration
+                syncEdge = null;
+                // check if edge already exists
+                if(!gr.directReach(startSync, start))
+                {
+                    // Add that edge!
+                    gr.addEdge(startSync, start, 0, 0);
+                    syncEdge = gr.getDirectEdge(startSync, start);
+                    zeroEdgeAdded = true;
+                }
+                else
+                {
+                    // Check if the edge can be used (only a problem if it already
+                    // existed
+                    syncEdge = gr.getDirectEdge(startSync, start);
+                    if(doNotUse.contains(syncEdge))
+                    {
+                        trys--;
+                        continue addObservations;
+                    }  
+                }
+                // lets add it to the path
+                path.push(syncEdge);
+                start = startSync;
+            }
+            // now lets see if we even have a proper obs
+            if(currentLen < 1)
+            {
+                // First check if any of the paths for this observation will have 
+                // more than 1 fault
+                GraphPath st = new GraphPath(start);
+                ArrayList<GraphPath> paths = obsPaths(st, end, gr);
+                for(GraphPath gp : paths)
+                {
+                    int fault = 0;
+                    boolean hasEdgMisbehave = false;
+                    DEdge[] edges = gp.toEdges();
+                    for(DEdge de : edges)
+                    {
+                        if(de.equals(misbehave))
+                        {
+                            fault++;
+                            hasEdgMisbehave = true;
+                        }
+                        for(Falsie flsi : falseIntentions)
+                        {
+                            if(de.equals(flsi.falseE))
+                                fault++;
+                        }
+                    }
+                    if(fault > 1)
+                    {
+                        if(zeroEdgeAdded)
+                            gr.removeEdge(syncEdge);
+                        trys--;
+                        continue addObservations;
+                        // Dont add some observation if there are multiple faults
+                        // on one of its paths!
+                    }
+                    else if(hasEdgMisbehave && (edges.length != path.size()))
+                    {
+                        if(zeroEdgeAdded)
+                            gr.removeEdge(syncEdge);
+                        // if it uses the faulty edge but has a different length
+                        // then strong probability answer is inconsistent
+                        trys--;
+                        continue addObservations;
+                    }
+                }
+                // best if we check for the other Falsies if they dont have double
+                // faults as well
+                for(Falsie gdFalse: falseIntentions)
+                {
+                    GraphPath flStart = new GraphPath(gdFalse.falSE[0]);
+                    ArrayList<GraphPath> flPaths = obsPaths(flStart, gdFalse.falSE[1], gr);
+                    for(GraphPath gp : flPaths)
+                    {
+                        int fault = 0;
+                        DEdge[] edges = gp.toEdges();
+                        for(DEdge de : edges)
+                        {
+                            if(de.equals(misbehave))
+                            {
+                                fault++;
+                            }
+                            for(Falsie flsi : falseIntentions)
+                            {
+                                if(de.equals(flsi.falseE))
+                                    fault++;
+                            }
+                        }
+                        if(fault > 1)
+                        {
+                            if(zeroEdgeAdded)
+                                gr.removeEdge(syncEdge);
+                            trys--;
+                            continue addObservations;
+                            // The addition of the extra misbehave edge made 
+                            // an old Falsie path have 2+ errors so skip
+                        }
+                    }
+                }
+                
+                
+                // its good observation!
+                Falsie f = new Falsie();
+                Vertex[] newObs = new Vertex[2];
+                newObs[0] = start;
+                newObs[1] = end;
+                f.falSE = newObs;
+                f.falseE = misbehave;
+                f.falsePath = path.toArray(new DEdge[path.size()]);
+                falseIntentions.add(f);
+                // Always add the edge -> means obs and edge are connected
+                
+                // Any edge used on this obs-path may not be used in some other
+                // obs-path to make sure no inconsistent observations are 
+                // generated (or atleast no obs-path with 2 faults!)
+                for(DEdge de : f.falsePath)
+                {
+                    if(!doNotUse.contains(de))
+                        doNotUse.add(de);
+                }
+                // Al other paths on the obs-start/end pair with an error need 
+                // to be added as well
+                for(GraphPath gp : paths)
+                {
+                    for(Falsie flsi : falseIntentions)
+                    {
+                        DEdge[] edges = gp.toEdges();
+                        List<DEdge> edgz = Arrays.asList(edges);
+                        if(edgz.contains(flsi.falseE))
+                        {
+                            for(DEdge alsoNotUse : edgz)
+                            {
+                                if(!doNotUse.contains(alsoNotUse))
+                                    doNotUse.add(alsoNotUse);
+                            }
+                        }
+                    }
+                }
+                
+                trys--;
+                observations--;
+                if(DiagSTN.PRINTWARNING)
+                {
+                    System.out.print("Adding obs: " + start.getID() + "," + 
+                            end.getID());
+                    System.out.print(" faulty edge: " + 
+                            misbehave.getStart().getID() + "," + 
+                            misbehave.getEnd().getID() + "\n");
+                }
+            }
+            else
+                trys--;
+        }
+        return falseIntentions;
+    }
+    
+    /**
      * This is a struct for a _possible_ false observation that needs to be 
      * added after the network is initialized (so more of a intended obs)
      */
@@ -1355,6 +1283,7 @@ public class GraphGenerator
         public Vertex[] falSE;    // start and end vertex
         public DEdge falseE;       // edg where an error could be introduced 
         public DEdge[] falsePath;  // full (single) path the error lays on
+        boolean addError = true;
         
         public ArrayList<GraphPath> allPaths;
         public ArrayList<int[]> allBounds;
@@ -1370,6 +1299,11 @@ public class GraphGenerator
     private boolean initializeErrors(GraphObs gO, LinkedList<Falsie> intendedEs, 
             GraphGenSettings settings)
     {
+        if(settings.timeSyncT0)
+        {
+            return initializeZPErrors(gO, intendedEs, settings);
+        }
+        
         gO.observations = new LinkedList();
         gO.errorEdges = new LinkedList();
         gO.errorDiffs = new LinkedList();
@@ -1419,15 +1353,16 @@ public class GraphGenerator
                     }
                 }
                 falseO.falsePath = falsePathNewGraph.toEdges();
+                // Check if the old edge is still there (and save a reference)
                 int[] correctObservation = propPath(falsePathNewGraph);
                 int falsEStart = falseO.falseE.getStart().getID();
                 int falsEND = falseO.falseE.getEnd().getID();
                 DEdge realFalseEdge = gO.graph.getDirectEdge(
                         gO.graph.getVertex(falsEStart), 
                         gO.graph.getVertex(falsEND));
-                
-                
                 falseO.falseE = realFalseEdge; // translate to new Graph 
+                
+                
                 boolean changeSet = false;  // Do we have to take some preset error
                 int maxChange = 0;
                 int[] changeLimits = new int[2];
@@ -1442,7 +1377,7 @@ public class GraphGenerator
                 
                 These last 2 things should be combined */
                 if(!addedErrors.isEmpty())
-                {  
+                {
                     // Need to check for each added error
                     for(Falsie addedErr : addedErrors)
                     {
@@ -1620,6 +1555,313 @@ public class GraphGenerator
                             + " , " + end.getID() + " no path found");
                 return false;
             }
+        }
+        return true;
+    }
+    
+    /**
+     * Given some freshly initialized Graph and some intended errors, add these
+     * errors without making the graph or the errors inconsistent! 
+     * special ZeroPoint version
+     * @param graph
+     * @param intendedEs 
+     */
+    private boolean initializeZPErrors(GraphObs gO, LinkedList<Falsie> intendedEs, 
+            GraphGenSettings settings)
+    {
+        // TODO; for now special version to make sure no regressions happen!
+        
+        gO.observations = new LinkedList();
+        gO.errorEdges = new LinkedList();
+        gO.errorDiffs = new LinkedList();
+
+        Graph trueGraph = gO.graph.copy();   // not sure if needed but lets keep it rdy
+        LinkedList<Falsie> addedErrors = new LinkedList();
+        
+        for(Falsie falseO : intendedEs)
+        {
+            Vertex oldStart, start, oldEnd, end;
+            oldStart = falseO.falSE[0];
+            oldEnd = falseO.falSE[1];
+            start = gO.graph.getVertex(oldStart.getID());
+            end = gO.graph.getVertex(oldEnd.getID());
+            falseO.falSE[0] = start; // lets correct these values immediately
+            falseO.falSE[1] = end;  // from the old graph reference to the new graph
+            GraphPath startPath = new GraphPath(start);
+            ArrayList<GraphPath> pathsFound = obsPaths(startPath, end, 
+                    gO.graph);
+            
+            // No paths already means that its not going to work!
+            if(pathsFound.size() < 1)
+            {
+                // observationPath is no more!
+                if(DiagSTN.PRINTWARNING)
+                    System.out.println("Couldnt add false obs: " + start.getID()
+                            + " , " + end.getID() + " no path found");
+                return false;
+            }
+            
+            // see if the original obs-path is still there 
+            // and put it in a new GraphPath
+            GraphPath falsePathNewGraph = new GraphPath(start);
+            for(DEdge obsPathEdge : falseO.falsePath)
+            {
+                int pathEdgFro = obsPathEdge.getStart().getID();
+                int pathEdgTo = obsPathEdge.getEnd().getID();
+                boolean stillh = gO.graph.directReach(
+                        gO.graph.getVertex(pathEdgFro),
+                        gO.graph.getVertex(pathEdgTo));
+                if(!stillh)
+                {
+                    if(DiagSTN.PRINTWARNING)
+                        System.out.println("Couldnt add f edge: " +
+                                pathEdgFro + " , " + pathEdgTo +
+                                " error path not found");
+                    return false;
+                }
+                else
+                {
+                    DEdge pathEdgeNewGraph = gO.graph.getDirectEdge(
+                            gO.graph.getVertex(pathEdgFro), 
+                            gO.graph.getVertex(pathEdgTo));
+                    falsePathNewGraph.addStep(pathEdgeNewGraph,
+                            gO.graph.getVertex(pathEdgTo));
+                }
+            }
+            falseO.falsePath = falsePathNewGraph.toEdges();
+            // Check if the old edge is still there (and save a reference)
+            int[] correctObservation = propPath(falsePathNewGraph);
+            int falsEStart = falseO.falseE.getStart().getID();
+            int falsEND = falseO.falseE.getEnd().getID();
+            DEdge realFalseEdge = gO.graph.getDirectEdge(
+                    gO.graph.getVertex(falsEStart), 
+                    gO.graph.getVertex(falsEND));
+            falseO.falseE = realFalseEdge; // translate to new Graph 
+
+
+            boolean changeSet = false;  // Do we have to take some preset error
+            int maxChange = 0;
+            int[] changeLimits = new int[2];
+            changeLimits[0] = Integer.MIN_VALUE;
+            changeLimits[1] = Integer.MAX_VALUE;
+
+            // test if there are 2 errors on a path // ZP EXTRA
+            GraphPath st = new GraphPath(start);
+            ArrayList<GraphPath> paths = obsPaths(st, end, gO.graph);
+            for(GraphPath gp : paths)
+            {
+                int fault = 0;
+                boolean hasEdgMisbehave = false;
+                DEdge[] edges = gp.toEdges();
+                for(DEdge de : edges)
+                {
+                    if(de.equals(falseO.falseE))
+                    {
+                        fault++;
+                        hasEdgMisbehave = true;
+                    }
+                    for(Falsie flsi : addedErrors)
+                    {
+                        if(de.equals(flsi.falseE))
+                            fault++;
+                    }
+                }
+                if(fault > 1)
+                {
+                    // For now lets just return false (best if we leave 1 error
+                    // out and just add the observation)
+                    if(DiagSTN.PRINTWARNING)
+                        System.out.println("Double error found, skipped obs-add");
+                    return false;
+                }
+                else if(hasEdgMisbehave && (edges.length != falseO.falsePath.length))
+                {
+                    // if it uses the faulty edge but has a different length
+                    // then strong probability answer is inconsistent
+                    if(DiagSTN.PRINTWARNING)
+                        System.out.println("error with wrong path length found"
+                                + ", skipped obs-add");
+                    return false;
+                }
+            }
+
+            /* See if the error edge we want to use is part of any of the paths
+             * of already added observations! (if so we want to make sure the
+             * error will keep the other obs consistent!)
+             *  And See if some of the already added errors are part of one of the
+             * paths connecting the new obs ?? (its shouldnt be on the path!)
+
+            These last 2 things should be combined */
+            if(!addedErrors.isEmpty())
+            {
+                // Need to check for each added error
+                for(Falsie addedErr : addedErrors)
+                {
+                    ArrayList<Vertex> ancestAE = ancest(addedErr.falseE.getStart(),gO.graph);
+                    ArrayList<Vertex> ancestCurE = ancest(realFalseEdge.getStart(),gO.graph);
+                    LinkedList<Vertex> commonAncest = new LinkedList();
+                    for(Vertex anAE : ancestAE)
+                    {
+                        for(Vertex anCurE : ancestCurE)
+                        {
+                            if(anAE.equals(anCurE) && !commonAncest.contains(anAE))
+                                commonAncest.add(anAE);
+                        }
+                    }
+                    ArrayList<Vertex> descentAE = descendant(addedErr.falseE.getEnd(),gO.graph);
+                    ArrayList<Vertex> descentCurE = descendant(realFalseEdge.getEnd(),gO.graph);
+                    LinkedList<Vertex> commonDescent = new LinkedList();
+                    for(Vertex deAE : descentAE)
+                    {
+                        for(Vertex deCurE : descentCurE)
+                        {
+                            if(deAE.equals(deCurE) && !commonDescent.contains(deAE))
+                                commonDescent.add(deAE);
+                        }
+                    }
+                    // now we need to look for each pair what the limits are
+                    // to the error what we want to intoduce
+                    if(!commonDescent.isEmpty() && !commonAncest.isEmpty())
+                    {
+                        for(Vertex comAnc : commonAncest)
+                        {
+                            for(Vertex comDesc : commonDescent)
+                            {
+                                int[] changelimit = new int[2];
+                                GraphPath p = new GraphPath(comAnc);
+                                ArrayList<int[]> allBounds = pathCalc(p, 0, 0, comDesc, gO.graph);
+                                int[] combined = combinePaths(allBounds);
+
+                                int[] preComb = new int[2];
+                                if(comAnc.equals(realFalseEdge.getStart()))
+                                {
+                                    preComb[0] = 0;
+                                    preComb[1] = 0;
+                                }
+                                else
+                                {
+                                    GraphPath p2 = new GraphPath(comAnc);
+                                    ArrayList<int[]> preBounds = pathCalc(p2, 0, 0, realFalseEdge.getStart(), gO.graph);
+                                    preComb = combinePaths(preBounds);
+                                }
+
+                                int[] postComb = new int[2];
+                                if(comDesc.equals(realFalseEdge.getEnd()))
+                                {
+                                    postComb[0] = 0;
+                                    postComb[1] = 0;
+                                }
+                                else
+                                {
+                                    GraphPath p3 = new GraphPath(realFalseEdge.getEnd());
+                                    ArrayList<int[]> postBounds = pathCalc(p3, 0, 0, comDesc, gO.graph);
+                                    postComb = combinePaths(postBounds);
+                                }
+
+                                int[] curInterval = new int[2];
+                                curInterval[0] = preComb[0] + postComb[0] + realFalseEdge.getLowerb();
+                                curInterval[1] = preComb[1] + postComb[1] + realFalseEdge.getUpperb();
+
+                                // to stay consistent it can move at least 
+                                changelimit[0] = combined[0] - curInterval[1];
+                                changelimit[1] = combined[1] - curInterval[0];
+
+                                // intersection with previously found values;
+                                if(changelimit[0] > changeLimits[0])
+                                    changeLimits[0] = changelimit[0];
+                                if(changelimit[1] < changeLimits[1])
+                                    changeLimits[1] = changelimit[1];
+
+                                changeSet = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            ArrayList<int[]> boundsFound = new ArrayList();
+            falseO.allPaths = pathsFound;
+            for(GraphPath gp : pathsFound)
+            {
+                int[] bounds = propPath(gp);
+                boundsFound.add(bounds);
+            }
+            // Warning: uses different type of boundsFound method! (needs testing)
+            falseO.allBounds = boundsFound; 
+            int[] boufou = combinePaths(boundsFound);
+            int dff;
+            if(!changeSet)
+            {
+                // we can think of some new error as long as it doesnt make the system
+                // inconsistent
+                maxChange = boufou[1] - boufou[0];
+                double transf = ((double) settings.difference) / 100.0;
+                int lbc = (int) (boufou[0] * transf);
+                dff = Math.min(maxChange, lbc);
+                falseO.finalChange = dff;
+                int newlb = realFalseEdge.getLowerb() - dff; // pred = obs - error
+                int newub = realFalseEdge.getUpperb() - dff;
+                if(newlb < 0)
+                {
+                    newlb = 0;
+                    dff = realFalseEdge.getLowerb();
+                    falseO.finalChange = dff;
+                    newub = realFalseEdge.getUpperb() - dff;
+                }
+                realFalseEdge.setLowerb(newlb);  // Set the wrong/false values
+                realFalseEdge.setUpperb(newub);
+
+                /**
+                 * This shouldnt be tested for just the observation Vertex pair
+                 * but for all ancestors and descendants to make sure the system
+                 * is still consistent for some added error!
+                 */
+            }
+            else
+            {
+                Random rand = new Random();
+                // Need to add an error according to the change set.
+                if(changeLimits[0] > changeLimits[1] || (changeLimits[0] == 0 && changeLimits[1] == 0))
+                {
+                    // it was impossible to add some error in that position
+                    // so error is skipped
+                    continue;
+                }
+                else
+                {
+                    int width = changeLimits[1] - changeLimits[0];
+                    int randVal = changeLimits[0] + rand.nextInt(width + 1); // inclusive so +1
+                    if(randVal == 0)
+                        if(changeLimits[1] == 0)
+                            randVal--;
+                        else
+                            randVal++; // cant be both 0!
+                    dff = -randVal; // change is opposite of error!
+
+                    falseO.finalChange = dff;
+                    int newlb = realFalseEdge.getLowerb() - dff; // pred = obs - error
+                    int newub = realFalseEdge.getUpperb() - dff;
+                    if(newlb < 0)
+                    {
+                        newlb = 0;
+                        dff = realFalseEdge.getLowerb();
+                        falseO.finalChange = dff;
+                        newub = realFalseEdge.getUpperb() - dff;
+                    }
+                    realFalseEdge.setLowerb(newlb);  // Set the wrong/false values
+                    realFalseEdge.setUpperb(newub);
+                }
+            }
+
+            // the correct observation is used!
+            Observation ob = new Observation(start, end, correctObservation[0], correctObservation[1]);
+            gO.observations.add(ob);
+            gO.errorEdges.add(realFalseEdge);
+            gO.errorDiffs.add(falseO.finalChange); 
+            // this is the expected error (= obs - pred)
+
+            addedErrors.add(falseO);
         }
         return true;
     }
