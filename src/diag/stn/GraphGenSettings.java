@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 frans.
+ * Copyright 2016 Frans van den Heuvel.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,5 +111,39 @@ public class GraphGenSettings {
         this.observationLength = obsLength;
         this.difference = diff;
         this.timeSyncT0 = zeroPoint;
+    }
+    
+    @Override
+    public String toString()
+    {
+        String out;
+        if(type == BAGRAPH)
+        {
+            out = "BAGRaph =";
+            out = out + " # vertex: " + vertexSize;
+            out = out + " links/vertex: " + BALinksPerVertexAddition;
+            out = out + " only max: " + onlyMaxAdditions;
+            out = out + " # obs: " + numObservations;
+            out = out + " obs len: " + observationLength;
+            out = out + " diff: " + difference;
+            out = out + " T0: " + timeSyncT0;
+        }
+        else if(type == PLANLIKEGRAPH)
+        {
+            out = "PlanlikeGraph =";
+            
+            out = out + " # lines: " + numLines;
+            out = out + " line length lb: " + lineLengthLB;
+            out = out + " line length ub: " + lineLengthUB;
+            out = out + " line inter con: " + maxInterLineConnect;
+            out = out + " line vert con: " + maxLineVertConnect;
+            out = out + " # obs: " + numObservations;
+            out = out + " obs len: " + observationLength;
+            out = out + " diff: " + difference;
+            out = out + " T0: " + timeSyncT0;
+        }
+        else
+            out = "UnknownGraphSettings";
+        return out;
     }
 }

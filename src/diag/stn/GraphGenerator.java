@@ -1255,6 +1255,17 @@ public class GraphGenerator
                             }
                         }
                     }
+                    // because whole paths can be excluded in plans the diagnosis
+                    // some errors are implicitly but not accounted for during
+                    // error initialization (See notes Mon 8 Aug)
+                    if(gs.type == GraphGenSettings.PLANLIKEGRAPH)
+                    {  
+                        for(DEdge alsoNotUse : gp.toEdges())
+                        {
+                            if(!doNotUse.contains(alsoNotUse))
+                                doNotUse.add(alsoNotUse);
+                        }
+                    }
                 }
                 
                 trys--;
@@ -1483,6 +1494,12 @@ public class GraphGenerator
                     double transf = ((double) settings.difference) / 100.0;
                     int lbc = (int) (boufou[0] * transf);
                     dff = Math.min(maxChange, lbc);
+                    if(realFalseEdge.getLowerb() == 0) 
+                    {
+                        // if the edge cant be moved lower, we move it the other way
+                        // ie. observation is earlier than predicted .. (not common but ok)
+                        dff = -dff;
+                    }
                     falseO.finalChange = dff;
                     int newlb = realFalseEdge.getLowerb() - dff; // pred = obs - error
                     int newub = realFalseEdge.getUpperb() - dff;
@@ -1505,6 +1522,17 @@ public class GraphGenerator
                 else
                 {
                     Random rand = new Random();
+                    // A test to compare the wiggle room of the edge vs
+                    // the changeLimits wiggle room!
+                    if(changeLimits[0] < 0)
+                    {   // 
+                        if((realFalseEdge.getLowerb() + changeLimits[0]) < 0)
+                        {
+                            // else make sure the wiggle room down is adjusted to the 
+                            // space the edge has
+                            changeLimits[0] = - realFalseEdge.getLowerb();
+                        }
+                    }
                     // Need to add an error according to the change set.
                     if(changeLimits[0] > changeLimits[1] || (changeLimits[0] == 0 && changeLimits[1] == 0))
                     {
@@ -1799,6 +1827,12 @@ public class GraphGenerator
                 double transf = ((double) settings.difference) / 100.0;
                 int lbc = (int) (boufou[0] * transf);
                 dff = Math.min(maxChange, lbc);
+                if(realFalseEdge.getLowerb() == 0) 
+                {
+                    // if the edge cant be moved lower, we move it the other way
+                    // ie. observation is earlier than predicted .. (not common but ok)
+                    dff = -dff;
+                }
                 falseO.finalChange = dff;
                 int newlb = realFalseEdge.getLowerb() - dff; // pred = obs - error
                 int newub = realFalseEdge.getUpperb() - dff;
@@ -1821,12 +1855,23 @@ public class GraphGenerator
             else
             {
                 Random rand = new Random();
+                // A test to compare the wiggle room of the edge vs
+                // the changeLimits wiggle room!
+                if(changeLimits[0] < 0)
+                {   // 
+                    if((realFalseEdge.getLowerb() + changeLimits[0]) < 0)
+                    {
+                        // else make sure the wiggle room down is adjusted to the 
+                        // space the edge has
+                        changeLimits[0] = - realFalseEdge.getLowerb();
+                    }
+                }
                 // Need to add an error according to the change set.
                 if(changeLimits[0] > changeLimits[1] || (changeLimits[0] == 0 && changeLimits[1] == 0))
                 {
                     // it was impossible to add some error in that position
-                    // so error is skipped
-                    continue;
+                    // so couldnt add all obs (lets make it false)
+                    return false;
                 }
                 else
                 {

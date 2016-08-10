@@ -15,6 +15,7 @@
  */
 package diag.stn;
 
+import diag.stn.GUI.GUIApp;
 import diag.stn.GraphGenerator.GraphObs;
 import diag.stn.analyze.*;
 import diag.stn.STN.*;
@@ -46,27 +47,36 @@ public class DiagSTN
     {
         if(args.length > 0)
         {
-            readAndProcess(args[0]);
-            return;
+            if(args[0].equalsIgnoreCase("-gui"))
+            {
+                GUIApp gui = new GUIApp();
+            }
+            else
+                readAndProcess(args[0]);
+                // else presume input yaml file
         }
-        String out = "";
-        
-        // testCase1();
-        // testCase2();
-        // testCase3();
-        // testInitExt();
-        // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-        // out = "" + runRandomGen();
-        // out = "" + runSORandomGen();
-        //runBenchmark();
-        
-        boolean ans;
-        do
+        else
         {
-           ans = runRandomGen();
-        }while(ans);
+            String out = "";
+
+            // testCase1();
+            // testCase2();
+            // testCase3();
+            // testInitExt();
+            // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
+            // out = "" + runRandomGen();
+            // out = "" + runSORandomGen();
+            //runBenchmark();
+
+            boolean ans;
+            do
+            {
+               ans = runRandomGen();
+            }while(ans);
+
+            System.out.println("Right answer found: " + out);
+        }
         
-        System.out.println("Right answer found: " + out);
     }
     
     public static void readAndProcess(String file)
@@ -133,11 +143,11 @@ public class DiagSTN
         GraphGenerator gen = new GraphGenerator();
         
         GraphObs strct = gen.generateBAGraph(40, 2, false, 2, 6, 20, true);
-        //GraphObs strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 5, 20, false);
+        //GraphObs strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 5, 20, true);
         while(!strct.success)
         {
             strct = gen.generateBAGraph(40, 2, false, 2, 6, 20, true);
-            //strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 5, 20, false);
+            //strct = gen.generatePlanlikeGraph(3, 8, 12, 2, 2, 2, 5, 20, true);
         }
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
