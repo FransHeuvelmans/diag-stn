@@ -26,11 +26,11 @@ import javax.swing.*;
  * GUI Settings panel for generating BA style test cases
  * @author Frans van den Heuvel
  */
-public class BAGraphSettingPanel extends JPanel
+public class BAGraphSettingsPanel extends JPanel
 {
     private GUIApp caller;
     
-    public BAGraphSettingPanel(GUIApp father)
+    public BAGraphSettingsPanel(GUIApp father)
     {
         caller = father;
         

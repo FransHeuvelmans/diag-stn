@@ -60,7 +60,8 @@ public class GUIApp
         redirectSystemStreams();    // System.out in TextArea
 
         JPanel controls = new JPanel(new BorderLayout());
-        controls.add(new BAGraphSettingPanel(this), BorderLayout.NORTH);
+        controls.add(new BAGraphSettingsPanel(this), BorderLayout.NORTH);
+        controls.add(new PlanSettingsPanel(this), BorderLayout.CENTER);
         // frameLike Graph middle
         // extra options like input yaml and mayb visualization some day south
 
@@ -118,7 +119,7 @@ public class GUIApp
     public void runSettings(GraphGenSettings gs)
     {
         updateArea.setText(null);
-        System.out.println("Running with settings: "+ gs);
+        System.out.println("Running with settings: "+ gs + "\n");
         GraphGenerator gen = new GraphGenerator();
         GraphGenerator.GraphObs strct = null;
         if(gs.type == GraphGenSettings.BAGRAPH)
@@ -157,6 +158,8 @@ public class GUIApp
     
     private void showTestCase()
     {
+        System.out.println(" This is a test case showing MAC diagnosis of STN\n"
+                + "(from Maximum Confirmation Diagnosis by Roos, 2010)\n");
         int ids = 0;
         
         // Explain the STN

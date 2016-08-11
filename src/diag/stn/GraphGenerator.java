@@ -156,11 +156,11 @@ public class GraphGenerator
         
         // Then the errors are generated (again without bounds) randomly and
         // if a T0 is needed, then this is added
-        LinkedList<Falsie> falseIntentions = generateErrors(gr, gs);
+        FalsieGroup fgroup = generateErrors(gr, gs);
                 
         // Check if there are errors to diagnose (check because of bruteforce
         // random add)
-        if(falseIntentions.size() < 1)
+        if(fgroup.intendedEs.size() < 1)
         {
             /* If it wasnt possible to add any obs then maybe it's time to try 
              * adding smaller length observations */
@@ -180,7 +180,7 @@ public class GraphGenerator
         // initialized graph; the obs can also be initialized. Needs quite a few
         // checks to see if the original path is still there and the bounds of
         // the errors are consistent
-        boolean suc = initializeErrors(grOb, falseIntentions, gs);
+        boolean suc = initializeErrors(grOb, fgroup, gs);
         
         grOb.success = suc;
         grOb.settings = gs;
@@ -515,11 +515,11 @@ public class GraphGenerator
         
         // Then the errors are generated (again without bounds) randomly and
         // if a T0 is needed, then this is added
-        LinkedList<Falsie> falseIntentions = generateErrors(gr, gs);
+        FalsieGroup fgroup = generateErrors(gr, gs);
                 
         // Check if there are errors to diagnose (check because of bruteforce
         // random add)
-        if(falseIntentions.size() < 1)
+        if(fgroup.intendedEs.size() < 1)
         {
             /* If it wasnt possible to add any obs then maybe it's time to try 
              * adding smaller length observations */
@@ -537,7 +537,7 @@ public class GraphGenerator
         // initialized graph; the obs can also be initialized. Needs quite a few
         // checks to see if the original path is still there and the bounds of
         // the errors are consistent
-        boolean suc = initializeErrors(grOb, falseIntentions, gs);
+        boolean suc = initializeErrors(grOb, fgroup, gs);
         
         grOb.success = suc;
         grOb.settings = gs;
@@ -682,6 +682,11 @@ public class GraphGenerator
                 // Add the edges according to bounds as well
                 for(int j = 0; j < fromsToNewV.length; j++)
                 {
+                    if(improvedGraph.directReach(fromsToNewV[j], imprV))
+                    {
+                        // double edge ?? shouldnt be possible!
+                        continue;
+                    }
                     int[] bound = bounds.get(j);
                     if((bound[0] == 0) && (bound[1] == 0))
                     {
@@ -1019,7 +1024,7 @@ public class GraphGenerator
      * @param gs Settings for Graph Generation
      * @return 
      */
-    private LinkedList<Falsie> generateErrors(Graph gr, GraphGenSettings gs)
+    private FalsieGroup generateErrors(Graph gr, GraphGenSettings gs)
     {
         Random rand = new Random();
         Vertex startSync = null;
@@ -1033,6 +1038,8 @@ public class GraphGenerator
         LinkedList<DEdge> doNotUse = new LinkedList();
         // Do not use edges which are path of the obs-path of another fault
         // (so some obs will not have 2 faults on 1 path!)
+        LinkedList<DEdge> faultyEdges = new LinkedList();
+        // These are the precise faults
         
         int observations = gs.numObservations;
         int obsLength = gs.observationLength;
@@ -1067,12 +1074,12 @@ public class GraphGenerator
                     break;
                 Vertex newEnd = possibilities.get(rand.nextInt(possibilities.size()));
                 DEdge de = gr.getDirectEdge(end, newEnd);
-                if(doNotUse.contains(de))
+                if(faultyEdges.contains(de))
                 {
                     HashSet<DEdge> possibleEdges = gr.possibleEdges(end);
                     for(DEdge eddie : possibleEdges)
                     {
-                        if(doNotUse.contains(eddie))
+                        if(faultyEdges.contains(eddie))
                             possibilities.remove(eddie.getEnd());
                     }
                     if(possibilities.size() < 1)
@@ -1093,12 +1100,12 @@ public class GraphGenerator
                 
                 Vertex newStart = possibilities.get(rand.nextInt(possibilities.size()));
                 DEdge de = gr.getDirectEdge(newStart, start);
-                if(doNotUse.contains(de))
+                if(faultyEdges.contains(de))
                 {
                     HashSet<DEdge> possibleEdges = gr.incomingEdges(start);
                     for(DEdge eddie : possibleEdges)
                     {
-                        if(doNotUse.contains(eddie))
+                        if(faultyEdges.contains(eddie))
                             possibilities.remove(eddie.getStart()); 
                     }
                     if(possibilities.size() < 1)
@@ -1130,11 +1137,11 @@ public class GraphGenerator
                     // Check if the edge can be used (only a problem if it already
                     // existed
                     syncEdge = gr.getDirectEdge(startSync, start);
-                    if(doNotUse.contains(syncEdge))
+                    if(faultyEdges.contains(syncEdge))
                     {
                         trys--;
                         continue addObservations;
-                    }  
+                    }
                 }
                 // lets add it to the path
                 path.push(syncEdge);
@@ -1159,9 +1166,9 @@ public class GraphGenerator
                             fault++;
                             hasEdgMisbehave = true;
                         }
-                        for(Falsie flsi : falseIntentions)
+                        for(DEdge flsi : faultyEdges)
                         {
-                            if(de.equals(flsi.falseE))
+                            if(de.equals(flsi))
                                 fault++;
                         }
                     }
@@ -1200,9 +1207,9 @@ public class GraphGenerator
                             {
                                 fault++;
                             }
-                            for(Falsie flsi : falseIntentions)
+                            for(DEdge flsi : faultyEdges)
                             {
-                                if(de.equals(flsi.falseE))
+                                if(de.equals(flsi))
                                     fault++;
                             }
                         }
@@ -1227,6 +1234,7 @@ public class GraphGenerator
                 f.falSE = newObs;
                 f.falseE = misbehave;
                 f.falsePath = path.toArray(new DEdge[path.size()]);
+                f.otherEs = new ArrayList();
                 falseIntentions.add(f);
                 // Always add the edge -> means obs and edge are connected
                 
@@ -1236,35 +1244,65 @@ public class GraphGenerator
                 for(DEdge de : f.falsePath)
                 {
                     if(!doNotUse.contains(de))
-                        doNotUse.add(de);
+                        doNotUse.add(de);   // also adds misbehave!
                 }
-                // Al other paths on the obs-start/end pair with an error need 
-                // to be added as well
+                faultyEdges.add(misbehave);
+                    
+                
+                // Assume that each other path of the observation can have an 
+                // error as well
                 for(GraphPath gp : paths)
                 {
-                    for(Falsie flsi : falseIntentions)
+                    DEdge[] pathEdges = gp.toEdges();
+                    boolean hasError = false;
+                    for(DEdge pathEdg : pathEdges)
                     {
-                        DEdge[] edges = gp.toEdges();
-                        List<DEdge> edgz = Arrays.asList(edges);
-                        if(edgz.contains(flsi.falseE))
+                        // See if this particular path already has an error
+                        if(faultyEdges.contains(pathEdg))
                         {
-                            for(DEdge alsoNotUse : edgz)
+                            hasError = true;
+                            break;
+                        }
+                    }
+                    // if there is not already some error in the path, some
+                    // edge must be used as possible faulty edge (in case the
+                    // path ends up with the wrong prediction)
+                    if(!hasError)
+                    {
+                        for(int iter = pathEdges.length - 1; iter >= 0; iter--)
+                        {
+                            if(!doNotUse.contains(pathEdges[iter]))
                             {
-                                if(!doNotUse.contains(alsoNotUse))
-                                    doNotUse.add(alsoNotUse);
+                                // We appoint this as a possible faulty edge
+                                faultyEdges.add(pathEdges[iter]);
+                                f.otherEs.add(pathEdges[iter]);
+                                hasError = true;
+                                break;  // Only need to add 1 error / path
                             }
                         }
                     }
-                    // because whole paths can be excluded in plans the diagnosis
-                    // some errors are implicitly but not accounted for during
-                    // error initialization (See notes Mon 8 Aug)
-                    if(gs.type == GraphGenSettings.PLANLIKEGRAPH)
-                    {  
-                        for(DEdge alsoNotUse : gp.toEdges())
-                        {
-                            if(!doNotUse.contains(alsoNotUse))
-                                doNotUse.add(alsoNotUse);
-                        }
+                    // if it still has no error than for 1 of the (other) paths
+                    // of this obs it was not possible to use some error!
+                    if(!hasError)
+                    {
+                        if(DiagSTN.PRINTWARNING)
+                            System.out.println("Skipping obs because of "
+                                    + "impossible side-path");
+                        // try to revert the damage done (isnt possible for the
+                        // doNotUse register)
+                        falseIntentions.remove(f);
+                        faultyEdges.remove(misbehave);
+                        trys--;
+                        if(zeroEdgeAdded)
+                            gr.removeEdge(syncEdge);
+                        continue addObservations;
+                    }
+                    
+                    // finally add all edges to doNotUse (ie. dont touch these!)
+                    for(DEdge pathEdg : pathEdges)
+                    {
+                        if(!doNotUse.contains(pathEdg))
+                            doNotUse.add(pathEdg);
                     }
                 }
                 
@@ -1282,7 +1320,10 @@ public class GraphGenerator
             else
                 trys--;
         }
-        return falseIntentions;
+        FalsieGroup FIGroup = new FalsieGroup();
+        FIGroup.intendedEs = falseIntentions;
+        FIGroup.allErrors = faultyEdges;
+        return FIGroup;
     }
     
     /**
@@ -1296,9 +1337,44 @@ public class GraphGenerator
         public DEdge[] falsePath;  // full (single) path the error lays on
         boolean addError = true;
         
+        // A list of possible other errors on other
+        // paths to make sure that generated problems 
+        // can be solved!
+        public ArrayList<DEdge> otherEs; 
+                               
+        
+        // Internal stuff for errorInit.
         public ArrayList<GraphPath> allPaths;
         public ArrayList<int[]> allBounds;
         public int finalChange;
+    }
+    
+    /**
+     * This combines all possible false observations with a list of all errors 
+     * that are used to create a valid group of false observations (includes
+     * errors that are not explicitly sought for by diagnosis but needed to construct
+     * a valid diagnosis)
+     */
+    private class FalsieGroup
+    {
+        LinkedList<Falsie> intendedEs;
+        LinkedList<DEdge> allErrors;
+        
+        // internal stuff for errorInitZP
+        LinkedList<int[]> errorBounds; // what could a possible answer for an error be
+        // these are the actual errors ie. pred + err = observ.
+        
+        public void printErrors()
+        {
+            if(allErrors == null)
+                return;
+            System.out.print(" used errors: ");
+            for(DEdge edge : allErrors)
+            {
+                System.out.print(edge.getStart().getID() + "," + 
+                        edge.getEnd().getID() + " ^ ");
+            }
+        }
     }
     
     /**
@@ -1307,13 +1383,15 @@ public class GraphGenerator
      * @param graph
      * @param intendedEs 
      */
-    private boolean initializeErrors(GraphObs gO, LinkedList<Falsie> intendedEs, 
+    private boolean initializeErrors(GraphObs gO, FalsieGroup fgroup, 
             GraphGenSettings settings)
     {
         if(settings.timeSyncT0)
         {
-            return initializeZPErrors(gO, intendedEs, settings);
+            return initializeZPErrors(gO, fgroup, settings);
         }
+        
+        LinkedList<Falsie> intendedEs = fgroup.intendedEs;
         
         gO.observations = new LinkedList();
         gO.errorEdges = new LinkedList();
@@ -1594,10 +1672,21 @@ public class GraphGenerator
      * @param graph
      * @param intendedEs 
      */
-    private boolean initializeZPErrors(GraphObs gO, LinkedList<Falsie> intendedEs, 
+    private boolean initializeZPErrors(GraphObs gO, FalsieGroup fgroup, 
             GraphGenSettings settings)
     {
         // TODO; for now special version to make sure no regressions happen!
+        LinkedList<Falsie> intendedEs = fgroup.intendedEs;
+        
+        // needed for last special ZP test
+        fgroup.errorBounds = new LinkedList();
+        for(DEdge smtng : fgroup.allErrors)
+        {
+            int[] tmp = new int[2];
+            tmp[0] = Integer.MIN_VALUE;
+            tmp[1] = Integer.MAX_VALUE;
+            fgroup.errorBounds.add(tmp);
+        }
         
         gO.observations = new LinkedList();
         gO.errorEdges = new LinkedList();
@@ -1898,6 +1987,26 @@ public class GraphGenerator
                     realFalseEdge.setUpperb(newub);
                 }
             }
+            
+            // A test to see if all the other paths can be explained by some of
+            // the errors added // ZP Extra!
+            
+            // first enter the just chosen new change in falsO.falsE
+            boolean realFalseFound = false;
+            int[] dffIntroduced = new int[2];
+            dffIntroduced[0] = dff;
+            dffIntroduced[1] = dff;
+            for(int it = 0; it < fgroup.allErrors.size(); it++)
+            {
+                if(realFalseEdge.sameIds(fgroup.allErrors.get(it)))
+                {
+                    int[] rfEBounds = fgroup.errorBounds.get(it);
+                    rfEBounds = dffIntroduced;
+                }
+            }
+            
+            // then see if every path can be explained by one of the errors!
+            
 
             // the correct observation is used!
             Observation ob = new Observation(start, end, correctObservation[0], correctObservation[1]);

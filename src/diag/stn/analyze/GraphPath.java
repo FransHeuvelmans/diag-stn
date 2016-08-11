@@ -162,4 +162,22 @@ public class GraphPath
         }
         System.out.print("\n");
     }
+    
+    /**
+     * A basic check if 2 GraphPaths use the same vertices (v with the same id) 
+     * @param other
+     * @return 
+     */
+    public boolean isSimilar(GraphPath other)
+    {
+        if(other.vertices.size() != this.vertices.size())
+            return false;
+        for(int i = 0 ; i < vertices.size(); i++)
+        {
+            if(this.vertices.get(i).getID() !=
+                    other.vertices.get(i).getID())
+                return false;
+        }
+        return true;
+    }
 }

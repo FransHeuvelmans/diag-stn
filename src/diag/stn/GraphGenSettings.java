@@ -93,6 +93,17 @@ public class GraphGenSettings {
         // set some sane default settings
         
         type = PLANLIKEGRAPH;
+        
+        this.numLines = 3;
+        this.lineLengthLB = 8;
+        this.lineLengthUB = 12;
+        this.maxInterLineConnect = 2;
+        this.maxLineVertConnect = 2;
+        
+        this.numObservations = 2;
+        this.observationLength = 5;
+        this.difference = 10;
+        this.timeSyncT0 = false;
     }
     
     public void planlikeGraph(int line, int linelb, int lineub, 

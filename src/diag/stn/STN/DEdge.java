@@ -228,12 +228,31 @@ public class DEdge
         return hazard;
     }
     
+    /**
+     * Tests if 2 edges have the same values (but are different objects)
+     * @param other
+     * @return 
+     */
     public boolean isSimilar(DEdge other)
     {
         if(this.start.getID() == other.start.getID())
             if(this.end.getID() == other.end.getID())
                 if(this.plowerbound == other.plowerbound &&
                         this.pupperbound == other.pupperbound)
+                    return true;
+        return false;
+    }
+    
+    /**
+     * Tests if 2 edges have the same vertices attached (vertices with the same
+     * id's)
+     * @param other
+     * @return 
+     */
+    public boolean sameIds(DEdge other)
+    {
+        if(this.start.getID() == other.start.getID())
+            if(this.end.getID() == other.end.getID())
                     return true;
         return false;
     }
