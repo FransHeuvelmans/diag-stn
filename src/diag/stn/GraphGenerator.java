@@ -1223,6 +1223,17 @@ public class GraphGenerator
                             // an old Falsie path have 2+ errors so skip
                         }
                     }
+                    
+                    // and check if they have similar start and end points
+                    // (I want different Obs!)
+                    if(gdFalse.falSE[0].equals(start) &&
+                            gdFalse.falSE[1].equals(end))
+                    {
+                        if(zeroEdgeAdded)
+                            gr.removeEdge(syncEdge);
+                        trys--;
+                        continue addObservations;
+                    }
                 }
                 
                 
@@ -1347,6 +1358,7 @@ public class GraphGenerator
         public ArrayList<GraphPath> allPaths;
         public ArrayList<int[]> allBounds;
         public int finalChange;
+        public int[] correctObs; // correct observation be4 changing the Graph!
     }
     
     /**
@@ -1748,6 +1760,7 @@ public class GraphGenerator
             falseO.falsePath = falsePathNewGraph.toEdges();
             // Check if the old edge is still there (and save a reference)
             int[] correctObservation = propPath(falsePathNewGraph);
+            falseO.correctObs = correctObservation;
             int falsEStart = falseO.falseE.getStart().getID();
             int falsEND = falseO.falseE.getEnd().getID();
             DEdge realFalseEdge = gO.graph.getDirectEdge(
@@ -1763,9 +1776,7 @@ public class GraphGenerator
             changeLimits[1] = Integer.MAX_VALUE;
 
             // test if there are 2 errors on a path // ZP EXTRA
-            GraphPath st = new GraphPath(start);
-            ArrayList<GraphPath> paths = obsPaths(st, end, gO.graph);
-            for(GraphPath gp : paths)
+            for(GraphPath gp : pathsFound)
             {
                 int fault = 0;
                 boolean hasEdgMisbehave = false;
@@ -1904,7 +1915,7 @@ public class GraphGenerator
                 int[] bounds = propPath(gp);
                 boundsFound.add(bounds);
             }
-            // Warning: uses different type of boundsFound method! (needs testing)
+            // Warning: uses different type of boundsFound method!
             falseO.allBounds = boundsFound; 
             int[] boufou = combinePaths(boundsFound);
             int dff;
@@ -2005,9 +2016,10 @@ public class GraphGenerator
                 }
             }
             
-            // then see if every path can be explained by one of the errors!
+            // part 2 outside falsie loop because all errors need to be
+            // linitialized (TODO: during calculation check if some error
+            // is part of another obs path and adjust things accordingly)
             
-
             // the correct observation is used!
             Observation ob = new Observation(start, end, correctObservation[0], correctObservation[1]);
             gO.observations.add(ob);
@@ -2016,6 +2028,66 @@ public class GraphGenerator
             // this is the expected error (= obs - pred)
 
             addedErrors.add(falseO);
+        }
+        
+        // If some error explains 2 different observations, can it explain
+        // them both properly. Also test if there is some error possible for
+        // some given edge
+        for(Falsie falsO : intendedEs)
+        {
+            // see if every path of every Obs can be explained by one of the errors!
+            for(GraphPath somePath :  falsO.allPaths)
+            {
+                int errorPos = -1;
+                int numErrors = 0; // 2nd extra check if paths have 2 errors
+                DEdge[] edges = somePath.toEdges();
+                for(DEdge dedg : edges)
+                {
+                    for(int jter = 0; jter < fgroup.allErrors.size(); jter++)
+                    {
+                        if(dedg.sameIds(fgroup.allErrors.get(jter)))
+                        {
+                            errorPos = jter;
+                            numErrors++;
+                        }
+                    }
+                }
+                if(numErrors != 1)  // should simply have a single error on each path!
+                    return false;
+                
+                /** Now test if it is possible to change this edge @ jter 
+                 *  and explain the strange output obs. (ie. is the resulting
+                 *  system consistent).
+                 */
+                int[] pathValues = propPath(somePath);
+                int[] obsValues = {falsO.correctObs[0], falsO.correctObs[1]};
+                int lbDifference = obsValues[0] - pathValues[0];
+                int ubDifference = obsValues[1] - pathValues[1];
+                // diff = -error so lets check 
+                
+                // pathValue + dff = obsValue
+                
+                int[] errorSaved = fgroup.errorBounds.get(errorPos);
+                // if error is set then the error must at least explain the obs
+                if(errorSaved[0] != Integer.MIN_VALUE || errorSaved[1] != Integer.MAX_VALUE)
+                {
+                    if(pathValues[0] + errorSaved[0] > obsValues[1])
+                        return false;   // problem!
+                    if(pathValues[1] + errorSaved[1] < obsValues[0])
+                        return false;
+                    // here on the change is valid!
+                }
+                else    // Set error for other paths
+                {
+                    errorSaved[0] = obsValues[0] - pathValues[0];
+                    errorSaved[1] = obsValues[1] - pathValues[1];
+                }
+                
+                // Could also check if error can be made @ the given position 
+                // (check if the edge wont become negative but for now this is
+                // not a problem since edges _can_ be negative) *with special
+                // flags*
+            }
         }
         return true;
     }
