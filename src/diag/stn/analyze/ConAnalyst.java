@@ -135,7 +135,7 @@ public class ConAnalyst extends Analyst
                     for(int n=1; n < paths[m].stepSize(); n++)
                     {
                         DEdge de = paths[m].getStepE(n);
-                        de.addPossibleChange(change[0], change[1]); 
+                        de.addPossibleConChange(change[0], change[1]); 
                         // store the possible changes
                     }
                 }

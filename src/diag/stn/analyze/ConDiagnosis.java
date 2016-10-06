@@ -21,11 +21,16 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 /**
- * A Consistency Diagnosis
+ * A Consistency based Diagnosis (for use without fault model).
  * @author Frans van den Heuvel
  */
 public class ConDiagnosis
 {
+    /**
+     * Is made for use in Analyst when generating Consistency based diangoses
+     * without fault models. ConAnalyst uses "normal" Diagnosis objects because
+     * the fault model is the same as MAC diagnosis & needed.
+     */
     private ArrayList<DEdge> faultyEdges;
     private ArrayList<DEdge> correctEdges;
     

@@ -64,16 +64,16 @@ public class DiagSTN
             // testCase3();
             // testInitExt();
             // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-            // out = "" + runRandomGen();
+             out = "" + runRandomGen();
             // out = "" + runSORandomGen();
             //runBenchmark();
 
-            boolean ans;
-            do
-            {
-               ans = runRandomGen();
-            }while(ans);
-
+//            boolean ans;
+//            do
+//            {
+//               ans = runRandomGen();
+//            }while(ans);
+//
             System.out.println("Right answer found: " + out + "\n");
         }
         
@@ -142,11 +142,11 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(40, 2, false, 2, 5, 20, true);
+        GraphObs strct = gen.generateBAGraph(50, 2, false, 2, 5, 20, false);
         //GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
         while(!strct.success)
         {
-            strct = gen.generateBAGraph(40, 2, false, 2, 5, 20, true);
+            strct = gen.generateBAGraph(50, 2, false, 2, 5, 20, false);
             //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
         }
         Analyst al = new Analyst(strct.graph);
@@ -162,6 +162,19 @@ public class DiagSTN
         Diagnosis[] diag = al.generateDiagnosis();
         al.printDiagnosis();
         CorrectCheck.printErrorsIntroduced(strct);
+        
+        ConAnalyst cal = new ConAnalyst(strct.graph);
+        for(Observation ob : strct.observations)
+        {
+            cal.addObservation(ob);
+        }
+        cal.generatePaths();
+        cal.propagateWeights();
+        Diagnosis[] cdiag = cal.generateDiagnosis();
+        cal.printDiagnosis();
+        
+        System.out.println("result diff: " + (-CorrectCheck.compareAvrDiagnosisSize(diag, cdiag)));
+        
         return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     

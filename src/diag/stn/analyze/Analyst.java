@@ -374,6 +374,10 @@ public class Analyst
         }
     }
     
+    /**
+     * Generate all consistency based diagnoses (without fault model)
+     * @return ConDiagnosis object array 
+     */
     public ConDiagnosis[] generateConDiagnosis()
     {
         LinkedList<GraphPath> fDiagnoses = new LinkedList();

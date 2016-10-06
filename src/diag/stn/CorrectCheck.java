@@ -32,7 +32,7 @@ public  class CorrectCheck
      */
     public static void printErrorsIntroduced(GraphObs grOb)
     {
-        System.out.println("*** Errors introduced :");
+        System.out.println("\n*** Errors introduced :");
         for(int i = 0; i < grOb.errorEdges.size(); i++)
         {
             DEdge de = grOb.errorEdges.get(i);
@@ -99,7 +99,69 @@ public  class CorrectCheck
      */
     public static boolean errorInConDiagnoses(GraphObs grOb, ConDiagnosis[] diagnoses)
     {
-        return false;
+        boolean found = false;
+        for(ConDiagnosis d : diagnoses)
+        {
+            boolean hasAllErrors = true;
+            for(DEdge errEdge : grOb.errorEdges)
+            {
+                if(!d.edgeSolved(errEdge))
+                {
+                    hasAllErrors = false;
+                    break;  // Must have each added error position (= edge)!
+                }
+                // Does not need to know what the error is
+            }
+            if(hasAllErrors)
+            {
+                found = true;
+                break;  // One diagnosis is correct so it is in the set 
+            }
+        }
+        return found;
+    }
+    
+    /**
+     * Compare the average diagnosis size of two answer sets. Used to compare
+     * the possible answers when using Consistency based diagnosis (+ Fault Model)
+     * vs MAC diagnosis
+     * @param a
+     * @param b
+     * @return 
+     */
+    public static double compareAvrDiagnosisSize(Diagnosis[] a, Diagnosis[] b)
+    {
+        int totalSizeA = 0;
+        int countA = a.length;
+        for(Diagnosis da : a)
+        {
+            int diagSize = 0;
+            DEdge[] changed = da.getEdgesChanged();
+            for(DEdge cEdge : changed)
+            {
+                int[] chnges = da.getChanges(cEdge);
+                int chngSize = chnges[1] - chnges[0];
+                totalSizeA += chngSize;
+            }
+        }
+        double ansA = (double) totalSizeA / (double) countA;
+        
+        int totalSizeB = 0;
+        int countB = b.length;
+        for(Diagnosis db : b)
+        {
+            int diagSize = 0;
+            DEdge[] changed = db.getEdgesChanged();
+            for(DEdge cEdge : changed)
+            {
+                int[] chnges = db.getChanges(cEdge);
+                int chngSize = chnges[1] - chnges[0];
+                totalSizeB += chngSize;
+            }
+        }
+        double ansB = (double) totalSizeB / (double) countB;
+        
+        return (ansA - ansB);
     }
     
 }
