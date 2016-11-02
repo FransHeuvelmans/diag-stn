@@ -566,6 +566,10 @@ public class Analyst
         }
     }
     
+    /**
+     * Number of diagnoses answer intervals
+     * @return Integer with number of output lines, each representing an interval
+     */
     public int diagSize()
     {
         return diagnosisList.size();

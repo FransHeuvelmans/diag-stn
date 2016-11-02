@@ -276,8 +276,16 @@ public class GraphGenerator
         nodes++;
     }
     
-    // Returns a list of predicted bounds on a path
-    private ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, 
+    /**
+     * Returns a list of predicted bounds on a path
+     * @param g
+     * @param lb
+     * @param ub
+     * @param end
+     * @param graph
+     * @return 
+     */
+    public static ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, 
             Graph graph)
     {
         //g.smallPrint();
@@ -314,9 +322,15 @@ public class GraphGenerator
         return pathLbUbs; 
     }
     
-    // Similar to pathCalc but returns all the paths for some pair of vertices 
-    // instead of the bounds
-    private ArrayList<GraphPath> obsPaths(GraphPath g, Vertex end, Graph graph)
+    /**
+     * Similar to pathCalc but returns all the paths for some pair of vertices 
+     * instead of the bounds
+     * @param g
+     * @param end
+     * @param graph
+     * @return 
+     */
+    public static ArrayList<GraphPath> obsPaths(GraphPath g, Vertex end, Graph graph)
     {
         int dlb,dub;
         ArrayList<GraphPath> paths = new ArrayList<>();
@@ -364,7 +378,9 @@ public class GraphGenerator
         return ans;
     }
     
-    // Method for taking the intersection of all the bounds on a path
+    /**
+     * Method for taking the intersection of all the bounds on a path
+     */
     private int[] combinePaths(ArrayList<int[]> paths)
     {
         if(paths.size() < 1)

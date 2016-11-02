@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 frans.
+ * Copyright 2016 Frans van den Heuvel.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,12 @@ package diag.stn;
 import diag.stn.STN.*;
 import diag.stn.GraphGenerator.GraphObs;
 import diag.stn.analyze.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 
 /**
  * Class with static methods for showing and checking how good the diagnoses 
- * are. 
+ * are. Plus methods for comparing answers, and input problems.
  * @author Frans van den Heuvel
  */
 public  class CorrectCheck
@@ -122,14 +124,14 @@ public  class CorrectCheck
     }
     
     /**
-     * Compare the average diagnosis size of two answer sets. Used to compare
+     * Compare the diagnosis size of two answer sets. Used to compare
      * the possible answers when using Consistency based diagnosis (+ Fault Model)
      * vs MAC diagnosis
      * @param a
      * @param b
      * @return 
      */
-    public static double compareAvrDiagnosisSize(Diagnosis[] a, Diagnosis[] b)
+    public static int compareDiagnosisSize(Diagnosis[] a, Diagnosis[] b)
     {
         int totalSizeA = 0;
         int countA = a.length;
@@ -144,7 +146,7 @@ public  class CorrectCheck
                 totalSizeA += chngSize;
             }
         }
-        double ansA = (double) totalSizeA / (double) countA;
+        //double ansA = (double) totalSizeA; // no average so no / (double) countA
         
         int totalSizeB = 0;
         int countB = b.length;
@@ -159,9 +161,90 @@ public  class CorrectCheck
                 totalSizeB += chngSize;
             }
         }
-        double ansB = (double) totalSizeB / (double) countB;
+        //double ansB = (double) totalSizeB;
+        // no average so no / (double) countB
         
-        return (ansA - ansB);
+        return (totalSizeA - totalSizeB);
     }
     
+    /**
+     * Calculates the total prediction interval size of all the observations
+     * @param pd initialized GraphObs object with the problem description
+     * @return integer with interval size
+     */
+    public static int totalPredictionSize(GraphObs pd)
+    {
+        int total = 0;
+        for(Observation ob : pd.observations)
+        {
+            Vertex st = ob.startV;
+            Vertex fin = ob.endV;
+            GraphPath startPath = new GraphPath(st);
+            ArrayList<int[]> boundsFound = GraphGenerator.pathCalc(startPath, 0,
+                    0, fin, pd.graph);
+            /*
+            Warning uses the union instead of the intersection like GraphGen.
+            Because a priori any value within the union is possible for some
+            prediction
+            */
+            int[] boufou = unionPaths(boundsFound);
+            
+            int inter = boufou[1] - boufou[0];
+            total += inter;
+        }
+        return total;
+    }
+    
+    /**
+     * takes the union of all the path bound (intervals)
+     * @param paths Arraylist of ints with the bounds
+     * @return int[2] array with the union bounds
+     */
+    public static int[] unionPaths(ArrayList<int[]> paths)
+    {
+        if(paths.size() < 1)
+            System.err.println(" Cant combine empty arraylist!");
+        
+        // Takes the Intersection
+        int[] finalbounds = paths.remove(paths.size()-1); // take last
+        for(int[] p: paths)
+        {
+            if(p[0] < finalbounds[0])
+                finalbounds[0] = p[0];
+            if(p[1] > finalbounds[1])
+                finalbounds[1] = p[1];
+        }
+        return finalbounds;
+    }
+    
+    /**
+     * Total number of unique edges which are observed 
+     * @param pd initialized GraphObs object with the problem description
+     * @return # of unique edges observed
+     */
+    public static int totalNumberEdges(GraphObs pd)
+    {
+        LinkedHashSet<DEdge> edges = new LinkedHashSet();
+        for(Observation ob : pd.observations)
+        {
+            Vertex st = ob.startV;
+            Vertex fin = ob.endV;
+            GraphPath startPath = new GraphPath(st);
+            ArrayList<GraphPath> pathsFound = GraphGenerator.obsPaths(startPath,
+                    fin, pd.graph);
+            
+            // For each path add all the edges to a set (with no doubles)
+            for(GraphPath gp : pathsFound)
+            {
+                for(int i=1; i < gp.stepSize(); i++)
+                {
+                    DEdge de = gp.getStepE(i);
+                    if(!edges.contains(de))
+                        edges.add(de);
+                }
+            }
+        }
+        // return the size of the total set of edges
+        return edges.size();
+    }
 }

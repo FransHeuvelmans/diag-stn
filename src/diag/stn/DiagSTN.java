@@ -35,10 +35,10 @@ import org.yaml.snakeyaml.*;
  */
 public class DiagSTN
 {
-    public static final boolean PRINTACC = true;
-    public static final boolean PRINTWARNING = true;
+    public static final boolean PRINTACC = false;
+    public static final boolean PRINTWARNING = false;
     public static final boolean IGNOREINCONSIST = false;
-    public static final boolean PATHPRINT = true;
+    public static final boolean PATHPRINT = false;
     
     /**
      * @param args the command line arguments
@@ -57,16 +57,16 @@ public class DiagSTN
         }
         else
         {
-            String out = "";
+//            String out = "";
 
-            // testCase1();
-            // testCase2();
-            // testCase3();
-            // testInitExt();
-            // readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
-             out = "" + runRandomGen();
-            // out = "" + runSORandomGen();
-            //runBenchmark();
+//             testCase1();
+//             testCase2();
+//             testCase3();
+//             testInitExt();
+//             readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
+//             out = "" + runRandomGen();
+//             out = "" + runSORandomGen();
+              runBenchmark();
 
 //            boolean ans;
 //            do
@@ -74,7 +74,7 @@ public class DiagSTN
 //               ans = runRandomGen();
 //            }while(ans);
 //
-            System.out.println("Right answer found: " + out + "\n");
+//            System.out.println("Right answer found: " + out + "\n");
         }
         
     }
@@ -149,6 +149,10 @@ public class DiagSTN
             strct = gen.generateBAGraph(50, 2, false, 2, 5, 20, false);
             //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
         }
+        
+        int fullPredIntSize = CorrectCheck.totalPredictionSize(strct);
+        int fullNumEdges = CorrectCheck.totalNumberEdges(strct);
+        
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
         {
@@ -173,7 +177,9 @@ public class DiagSTN
         Diagnosis[] cdiag = cal.generateDiagnosis();
         cal.printDiagnosis();
         
-        System.out.println("result diff: " + (-CorrectCheck.compareAvrDiagnosisSize(diag, cdiag)));
+        System.out.println("result diff: " + (-CorrectCheck.compareDiagnosisSize(diag, cdiag)));
+        System.out.println("Full prediction size: " + fullPredIntSize);
+        System.out.println("Number of edges observed: " + fullNumEdges);
         
         return CorrectCheck.errorInDiagnoses(strct, diag);
     }
@@ -203,30 +209,39 @@ public class DiagSTN
         GraphGenerator gen = new GraphGenerator();
         GraphObs strct;
         Analyst al;
-        boolean SOAnalist = true;
-        int iter = 10000;
-        String location = "benchSOResultTest4-PLSO9-23-27-2-2-2-1.csv";
+        boolean SOAnalist = false;
+        int iter = 10;
+        String location = "A-i10-BAGraph-30-2-f-2-5-20-f.csv";
+        
+        // Write all output to a CSV file and add some explanation
         FileWriter writer = null;
         try
         {
             writer = new FileWriter(location,true);
+            writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
+                    + "diagLines;conDuration;resultDiff\n");
+            writer.flush();
         } catch (IOException ex)
         {
             System.err.println("Couldnt open file to write benchresults to");
             Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        long start, end;
+        long start, end, startCon, endCon;
         for(int i = 0; i < iter; i++)
         {
-            //strct = gen.generateBAGraph(200, 3, true, 2, 1, true);
-            strct = gen.generatePlanlikeGraph(9, 23, 27, 2, 2, 2, 5, 10, true);
-            
-            if(strct.observations.size() < 1)
+            // Generate a new Problem (Pb)
+            strct = gen.generateBAGraph(30, 2, false, 2, 5, 20, false);
+            // strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
+            while(!strct.success)
             {
-                i--;
-                continue;
+                strct = gen.generateBAGraph(30, 2, false, 2, 5, 20, false);
+                //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
             }
+            int fullPredIntSize = CorrectCheck.totalPredictionSize(strct);
+            int fullNumEdges = CorrectCheck.totalNumberEdges(strct);
+            
+            // Create analyst and time the analysis (and check the output)
             if(!SOAnalist)
                 al = new Analyst(strct.graph);
             else
@@ -235,17 +250,33 @@ public class DiagSTN
             {
                 al.addObservation(ob);
             }
-
             start = System.nanoTime();
             al.generatePaths();
             if(!SOAnalist)
                 al.propagateWeights();
-            al.generateDiagnosis();
+            Diagnosis[] diag = al.generateDiagnosis();
             end = System.nanoTime();
+            boolean errorFound = CorrectCheck.errorInDiagnoses(strct, diag);
+            
+            // Consistency based diagnosis (+fm) comparison
+            ConAnalyst cal = new ConAnalyst(strct.graph);
+            for(Observation ob : strct.observations)
+            {
+                cal.addObservation(ob);
+            }
+            startCon = System.nanoTime();
+            cal.generatePaths();
+            cal.propagateWeights(); // Is never SO optimized
+            Diagnosis[] cdiag = cal.generateDiagnosis();
+            endCon = System.nanoTime(); // Both in time
+            int resultDiff = -CorrectCheck.compareDiagnosisSize(diag, cdiag);
+            
             try
             {
-                writer.append(SOAnalist + "," + al.diagSize() + "," 
-                        + (end - start) + "\n");
+                writer.append(fullPredIntSize + ";" + fullNumEdges + ";" +
+                        errorFound + ";" + (end - start) + ";" +
+                         al.diagSize() + ";" + (endCon - startCon) + ";" +
+                        resultDiff + "\n");
                 if(i % 100 == 0)
                     writer.flush();
             } catch (Throwable ex)
