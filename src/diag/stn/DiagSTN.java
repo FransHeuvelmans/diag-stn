@@ -35,10 +35,10 @@ import org.yaml.snakeyaml.*;
  */
 public class DiagSTN
 {
-    public static final boolean PRINTACC = false;
+    public static final boolean PRINTACC = true;
     public static final boolean PRINTWARNING = false;
-    public static final boolean IGNOREINCONSIST = false;
-    public static final boolean PATHPRINT = false;
+    public static final boolean IGNOREINCONSIST = true;
+    public static final boolean PATHPRINT = true;
     
     /**
      * @param args the command line arguments
@@ -59,14 +59,14 @@ public class DiagSTN
         {
 //            String out = "";
 
-//             testCase1();
+             testCase1();
 //             testCase2();
 //             testCase3();
 //             testInitExt();
 //             readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
 //             out = "" + runRandomGen();
-//             out = "" + runSORandomGen();
-              runBenchmark();
+//             runSimpleRandomGen();
+//             runBenchmark();
 
 //            boolean ans;
 //            do
@@ -142,16 +142,59 @@ public class DiagSTN
         
         GraphGenerator gen = new GraphGenerator();
         
-        GraphObs strct = gen.generateBAGraph(50, 2, false, 2, 5, 20, false);
-        //GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
+        GraphObs strct = gen.generateBAGraph(50, 2, false, 2, 11, 20, true);
+        //GraphObs strct = gen.generatePlanlikeGraph(7, 35, 45, 2, 2, 5, 9, 20, true);
         while(!strct.success)
         {
-            strct = gen.generateBAGraph(50, 2, false, 2, 5, 20, false);
-            //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
+            strct = gen.generateBAGraph(50, 2, false, 2, 11, 20, true);
+            //strct = gen.generatePlanlikeGraph(7, 35, 45, 2, 2, 5, 9, 20, true);
         }
         
         int fullPredIntSize = CorrectCheck.totalPredictionSize(strct);
-        int fullNumEdges = CorrectCheck.totalNumberEdges(strct);
+        int fullNumEdges = CorrectCheck.numberUniqueEdges(strct);
+        
+        SOAnalyst al = new SOAnalyst(strct.graph);
+        for(Observation ob : strct.observations)
+        {
+            al.addObservation(ob);
+        }
+        
+        al.generatePaths();
+//        al.printPaths();
+//        al.propagateWeights();
+//        al.printWeights();
+        Diagnosis[] diag = al.generateDiagnosis();
+//        al.printDiagnosis();
+        CorrectCheck.printErrorsIntroduced(strct);
+        
+        ConAnalyst cal = new ConAnalyst(strct.graph);
+        for(Observation ob : strct.observations)
+        {
+            cal.addObservation(ob);
+        }
+        cal.generatePaths();
+        cal.propagateWeights();
+        Diagnosis[] cdiag = cal.generateDiagnosis();
+//        cal.printDiagnosis();
+        
+        System.out.println("result diff: " + (-CorrectCheck.compareDiagnosisSize(diag, cdiag)));
+        System.out.println("Full prediction size: " + fullPredIntSize);
+        System.out.println("Number of edges observed: " + fullNumEdges);
+        
+        return CorrectCheck.errorInDiagnoses(strct, diag);
+    }
+    
+    public static void runSimpleRandomGen()
+    {
+        GraphGenerator gen = new GraphPerfGenerator();
+        
+//        GraphObs strct = gen.generateBAGraph(300, 3, false, 4, 10, 10, false);
+        GraphObs strct = gen.generatePlanlikeGraph(20, 30, 60, 2, 2, 3, 5, 0, false);
+        while(!strct.success)
+        {
+//            strct = gen.generateBAGraph(300, 3, false, 4, 10, 10, false);
+            strct = gen.generatePlanlikeGraph(30, 30, 60, 2, 2, 30, 10, 0, false);
+        }
         
         Analyst al = new Analyst(strct.graph);
         for(Observation ob : strct.observations)
@@ -163,45 +206,8 @@ public class DiagSTN
         al.printPaths();
         al.propagateWeights();
         al.printWeights();
-        Diagnosis[] diag = al.generateDiagnosis();
+        al.generateDiagnosis();
         al.printDiagnosis();
-        CorrectCheck.printErrorsIntroduced(strct);
-        
-        ConAnalyst cal = new ConAnalyst(strct.graph);
-        for(Observation ob : strct.observations)
-        {
-            cal.addObservation(ob);
-        }
-        cal.generatePaths();
-        cal.propagateWeights();
-        Diagnosis[] cdiag = cal.generateDiagnosis();
-        cal.printDiagnosis();
-        
-        System.out.println("result diff: " + (-CorrectCheck.compareDiagnosisSize(diag, cdiag)));
-        System.out.println("Full prediction size: " + fullPredIntSize);
-        System.out.println("Number of edges observed: " + fullNumEdges);
-        
-        return CorrectCheck.errorInDiagnoses(strct, diag);
-    }
-    
-    public static boolean runSORandomGen()
-    {
-        GraphGenerator gen = new GraphGenerator();
-        
-        //GraphObs strct = gen.generateBAGraph(200, 3, false, 2, 5, 10, true);
-        GraphObs strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 10, true);
-        Analyst al = new SOAnalyst(strct.graph);
-        for(Observation ob : strct.observations)
-        {
-            al.addObservation(ob);
-        }
-        
-        al.generatePaths();
-        al.printPaths();
-        al.printWeights();
-        Diagnosis[] diag = al.generateDiagnosis();
-        al.printDiagnosis();
-        return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     
     public static void runBenchmark()
@@ -209,17 +215,27 @@ public class DiagSTN
         GraphGenerator gen = new GraphGenerator();
         GraphObs strct;
         Analyst al;
-        boolean SOAnalist = false;
-        int iter = 10;
-        String location = "A-i10-BAGraph-30-2-f-2-5-20-f.csv";
+        boolean SOAnalyst = false;
+        int iter = 10000;
+        String location = "A-i10k-BAGraph-60-2-f-4-5-20-f.csv";
+        // old: A-i5k-BAGraph-60-2-f-2-13-20-f.csv
+        // A-i10k-PBGraph-4-8-12-2-2-2-5-20-t.csv
         
         // Write all output to a CSV file and add some explanation
         FileWriter writer = null;
         try
         {
             writer = new FileWriter(location,true);
-            writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
-                    + "diagLines;conDuration;resultDiff\n");
+            if(SOAnalyst)
+            {
+                writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
+                        + "diagLines;nor-SO\n");
+            }
+            else
+            {
+                writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
+                        + "diagLines;conDuration;resultDiff\n");
+            }
             writer.flush();
         } catch (IOException ex)
         {
@@ -227,22 +243,26 @@ public class DiagSTN
             Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        long start, end, startCon, endCon;
+        long start, end;
         for(int i = 0; i < iter; i++)
         {
             // Generate a new Problem (Pb)
-            strct = gen.generateBAGraph(30, 2, false, 2, 5, 20, false);
-            // strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
+            strct = gen.generateBAGraph(60, 2, false, 4, 5, 20, false);
+            //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
             while(!strct.success)
             {
-                strct = gen.generateBAGraph(30, 2, false, 2, 5, 20, false);
-                //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 3, 5, 20, false);
+                strct = gen.generateBAGraph(60, 2, false, 4, 5, 20, false);
+                //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
             }
             int fullPredIntSize = CorrectCheck.totalPredictionSize(strct);
-            int fullNumEdges = CorrectCheck.totalNumberEdges(strct);
+            int fullNumEdges = CorrectCheck.numberUniqueEdges(strct);
+            
+            // Check if it is a solvable problem, only when using SOAnalyst
+//            if(!solvable(strct))
+//                continue;
             
             // Create analyst and time the analysis (and check the output)
-            if(!SOAnalist)
+            if(!SOAnalyst)
                 al = new Analyst(strct.graph);
             else
                 al = new SOAnalyst(strct.graph);
@@ -252,13 +272,16 @@ public class DiagSTN
             }
             start = System.nanoTime();
             al.generatePaths();
-            if(!SOAnalist)
+            if(!SOAnalyst)
                 al.propagateWeights();
             Diagnosis[] diag = al.generateDiagnosis();
             end = System.nanoTime();
             boolean errorFound = CorrectCheck.errorInDiagnoses(strct, diag);
             
             // Consistency based diagnosis (+fm) comparison
+            int resultDiff = 0;
+            long startCon = 0;
+            long endCon = 0;
             ConAnalyst cal = new ConAnalyst(strct.graph);
             for(Observation ob : strct.observations)
             {
@@ -269,7 +292,7 @@ public class DiagSTN
             cal.propagateWeights(); // Is never SO optimized
             Diagnosis[] cdiag = cal.generateDiagnosis();
             endCon = System.nanoTime(); // Both in time
-            int resultDiff = -CorrectCheck.compareDiagnosisSize(diag, cdiag);
+            resultDiff = -CorrectCheck.compareDiagnosisSize(diag, cdiag);
             
             try
             {
@@ -297,6 +320,22 @@ public class DiagSTN
         
     }
     
+    private static boolean solvable(GraphObs go)
+    {
+        Analyst al = new Analyst(go.graph);
+        for(Observation ob : go.observations)
+        {
+            al.addObservation(ob);
+        }
+        long start = System.nanoTime();
+        al.generatePaths();
+        al.propagateWeights();
+        Diagnosis[] diag = al.generateDiagnosis();
+        long finish = System.nanoTime();
+        boolean errorFound = CorrectCheck.errorInDiagnoses(go, diag);
+        return errorFound;
+    }
+    
     public static void testCase1()
     {
         int ids = 0;
@@ -320,7 +359,7 @@ public class DiagSTN
         graph.addEdge(a, b, 10, 15);
         graph.addEdge(b, c, 14, 23);
         graph.addEdge(c, d, 6, 12);
-        graph.addEdge(c, e, 13, 999);
+        graph.addEdge(c, e, 13, 9999);
         graph.addEdge(d, f, 25, 33);
         graph.addEdge(e, g, 10, 15);
         // t0 to t5 == [ 55 - 83]

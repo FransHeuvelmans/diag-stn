@@ -59,7 +59,7 @@ public class GraphGenerator
      * Struct used to attach a degree to a vertex (and to be able to compare
      * build-vertices)
      */
-    private class BuildVertex implements Comparable<BuildVertex>
+    class BuildVertex implements Comparable<BuildVertex>
     {
         public Vertex vert;
         public int degree;
@@ -381,7 +381,7 @@ public class GraphGenerator
     /**
      * Method for taking the intersection of all the bounds on a path
      */
-    private int[] combinePaths(ArrayList<int[]> paths)
+    static int[] combinePaths(ArrayList<int[]> paths)
     {
         if(paths.size() < 1)
             System.err.println(" Cant combine empty arraylist!");
@@ -511,7 +511,7 @@ public class GraphGenerator
                         continue;
                     int vertEnd = rand.nextInt(space);
                     
-                    lb = 0; // TODO! also the dirty solution!!
+                    lb = 0; // Must be set properly after creation!
                     ub = rand.nextInt(30);
                     gr.addEdge(conLine.get(vertStart),
                             (lines[linePick].get(vertEnd)), lb, ub);

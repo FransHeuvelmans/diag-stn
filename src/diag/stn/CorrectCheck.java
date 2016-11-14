@@ -218,11 +218,11 @@ public  class CorrectCheck
     }
     
     /**
-     * Total number of unique edges which are observed 
+     * Number of unique edges which are observed 
      * @param pd initialized GraphObs object with the problem description
      * @return # of unique edges observed
      */
-    public static int totalNumberEdges(GraphObs pd)
+    public static int numberUniqueEdges(GraphObs pd)
     {
         LinkedHashSet<DEdge> edges = new LinkedHashSet();
         for(Observation ob : pd.observations)
@@ -246,5 +246,32 @@ public  class CorrectCheck
         }
         // return the size of the total set of edges
         return edges.size();
+    }
+    
+    /**
+     * Total number of edges that is observed. Some edges are multiple times in
+     * this total. This method shows the input size in # edges of the 
+     * generateDiagnosis() method.
+     * @return # edges observed with doubles
+     */
+    public static int totalNumberEdges(GraphObs pd)
+    {
+        int totalEdges = 0;
+        for(Observation ob : pd.observations)
+        {
+            Vertex st = ob.startV;
+            Vertex fin = ob.endV;
+            GraphPath startPath = new GraphPath(st);
+            ArrayList<GraphPath> pathsFound = GraphGenerator.obsPaths(startPath,
+                    fin, pd.graph);
+            
+            // For each path add all the edges to a set (with no doubles)
+            for(GraphPath gp : pathsFound)
+            {
+                int pathSize = gp.toEdges().length;
+                totalEdges += pathSize;
+            }
+        }
+        return totalEdges;
     }
 }
