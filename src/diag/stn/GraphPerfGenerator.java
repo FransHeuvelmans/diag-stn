@@ -119,10 +119,7 @@ public class GraphPerfGenerator extends GraphGenerator
         
         addErrors(grOb, gs);
         
-        if(grOb.observations.size() >= gs.numObservations)
-            grOb.success = true; // Enough observations so continue
-        else
-            grOb.success = false;
+        grOb.success = true;
         
         grOb.settings = gs;
         
@@ -464,13 +461,34 @@ public class GraphPerfGenerator extends GraphGenerator
         // Add some bounds to grOb
         addErrors(grOb, gs);
         
-        if(grOb.observations.size() >= gs.numObservations)
-            grOb.success = true; // Enough observations so continue
-        else
-            grOb.success = false;
+        grOb.success = true;
         
         grOb.settings = gs;
         
         return grOb;
+    }
+    
+    public GraphObs generatePlanlikeGraph(GraphGenSettings gs)
+    {
+        if(gs.type != GraphGenSettings.PLANLIKEGRAPH)
+            System.err.println("Not correct (planlike) type of settings");
+        return generatePlanlikeGraph(gs.numLines, gs.lineLengthLB, gs.lineLengthUB,
+                gs.maxInterLineConnect, gs.maxLineVertConnect, 
+                gs.numObservations, gs.observationLength, gs.difference, 
+                gs.timeSyncT0);
+    }
+    
+    public GraphObs generateProblem(GraphGenSettings gs)
+    {
+        if(gs.type == GraphGenSettings.BAGRAPH)
+            return generateBAGraph(gs);
+        else if(gs.type == GraphGenSettings.PLANLIKEGRAPH)
+            return generatePlanlikeGraph(gs);
+        else
+        {
+            System.err.println("Non instantiated setting given");
+            gs.BAGraph();
+            return generateBAGraph(gs);
+        }
     }
 }

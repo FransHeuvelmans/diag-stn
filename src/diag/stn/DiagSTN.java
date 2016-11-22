@@ -67,6 +67,7 @@ public class DiagSTN
 //             out = "" + runRandomGen();
 //             runSimpleRandomGen();
 //             runBenchmark();
+//            runSpdBenchmark();
 
 //            boolean ans;
 //            do
@@ -302,6 +303,130 @@ public class DiagSTN
                         resultDiff + "\n");
                 if(i % 100 == 0)
                     writer.flush();
+            } catch (Throwable ex)
+            {
+                System.err.println("Couldnt append line to file");
+                Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        try
+        {
+            writer.flush();
+            writer.close();
+        } catch (IOException ex)
+        {
+            System.err.println("Couldnt close file to write benchresults to");
+            Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    
+    public static void runSpdBenchmark()
+    {
+        GraphGenSettings setting = new GraphGenSettings();
+        setting.BAGraph(50, 2, false, 2, 5, 20, false);
+//        setting.planlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
+        runSpdBenchmark(setting,10000,false);
+        System.out.println(setting);
+
+    }   
+    
+    public static void runSpdBenchmark(GraphGenSettings setting, int iter, boolean SOAnalyst)
+    {
+        GraphPerfGenerator gen = new GraphPerfGenerator();
+        GraphObs strct;
+        Analyst al;
+        // Put settings separate
+//        boolean SOAnalyst = false;
+//        int iter = 20000;
+//        GraphGenSettings setting = new GraphGenSettings();
+//        setting.BAGraph(30, 2, false, 2, 5, 20, false);
+//        setting.planlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
+        
+        // Build output string
+        String analyst, location;
+        if(SOAnalyst)
+            analyst = "SOA";
+        else
+            analyst = "A";
+        if(setting.type == GraphGenSettings.BAGRAPH)
+            location = String.format(analyst +"-i%dk-BAGraph-%d-%d-%b-%d-%d-%d"
+                    + "-%b.csv",(iter / 1000),setting.vertexSize,
+                    setting.BALinksPerVertexAddition,setting.onlyMaxAdditions,
+                    setting.numObservations,setting.observationLength,
+                    setting.difference,setting.timeSyncT0);
+        else if (setting.type == GraphGenSettings.PLANLIKEGRAPH)
+            location = String.format(analyst +"-i%dk-PBGraph-%d-%d-%d-%d-%d-%d"
+                    + "-%d-%d-%b.csv",(iter / 1000),setting.numLines,
+                    setting.lineLengthLB,setting.lineLengthUB,
+                    setting.maxInterLineConnect,setting.maxLineVertConnect,
+                    setting.numObservations,setting.observationLength,
+                    setting.difference,setting.timeSyncT0);
+        else
+        {
+            System.err.println("No normal setting used for benchmark");
+            location = "unknown.csv";
+        }
+        // old: A-i5k-BAGraph-60-2-f-2-13-20-f.csv
+        // A-i10k-PBGraph-4-8-12-2-2-2-5-20-t.csv
+        
+        // Write all output to a CSV file and add some explanation
+        FileWriter writer = null;
+        try
+        {
+            writer = new FileWriter(location,true);
+            writer.append("totalNumEdges;numUniqueEdges;duration\n");
+            writer.flush();
+        } catch (IOException ex)
+        {
+            System.err.println("Couldnt open file to write benchresults to");
+            Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        long start, end;
+        for(int i = 0; i < iter; i++)
+        {
+            // Generate a new Problem (Pb)
+//            strct = gen.generateBAGraph(setting);
+//            strct = gen.generatePlanlikeGraph(setting);
+            strct = gen.generateProblem(setting);
+            while(!strct.success)
+            {
+//                strct = gen.generateBAGraph(setting);
+//                strct = gen.generatePlanlikeGraph(setting);
+                strct = gen.generateProblem(setting);
+            }
+            int totalNumEdges = CorrectCheck.totalNumberEdges(strct);
+            int uniqueEdges = CorrectCheck.numberUniqueEdges(strct);
+            
+            
+            if(!SOAnalyst)
+                al = new Analyst(strct.graph);
+            else
+                al = new SOAnalyst(strct.graph);
+            for(Observation ob : strct.observations)
+            {
+                al.addObservation(ob);
+            }
+            start = System.nanoTime();
+            al.generatePaths();
+            if(!SOAnalyst)
+                al.propagateWeights();
+            Diagnosis[] diag = al.generateDiagnosis();
+            end = System.nanoTime();
+            
+            // Consistency based diagnosis (+fm) comparison
+            // For now remove Consistency based diagnosis comparison
+            
+            try
+            {
+                writer.append(uniqueEdges + ";" + totalNumEdges + ";" + 
+                        (end - start) + "\n");
+                if(i % 500 == 0)
+                {
+                    writer.flush();
+                    System.out.print(".");
+                }
             } catch (Throwable ex)
             {
                 System.err.println("Couldnt append line to file");
