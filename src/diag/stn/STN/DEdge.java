@@ -128,7 +128,8 @@ public class DEdge
     /**
      * Returns the list of possible changes meant for consistency based diagnosis
      * with the use of fault models.
-     * @return 
+     * @return list with possible changes for a consistency based diagnosis as
+     * int = {lower bound on change, upper bound on change}
      */
     public ArrayList<int[]> getPossibleConChanges()
     {
@@ -230,8 +231,8 @@ public class DEdge
     
     /**
      * Tests if 2 edges have the same values (but are different objects)
-     * @param other
-     * @return 
+     * @param other Other DEdge to compare this one to
+     * @return true if edges have same ID's and bounds
      */
     public boolean isSimilar(DEdge other)
     {
@@ -246,8 +247,8 @@ public class DEdge
     /**
      * Tests if 2 edges have the same vertices attached (vertices with the same
      * id's)
-     * @param other
-     * @return 
+     * @param other Other DEdge to compare this one to
+     * @return True is both have same id's false if otherwise
      */
     public boolean sameIds(DEdge other)
     {

@@ -23,7 +23,12 @@ import java.util.LinkedList;
 import java.util.Random;
 
 /**
- *
+ * Generates sample problems without knowing the exact error locations and uses 
+ * more simple rules for calculating edge bounds. This class is capable of
+ * creating problems faster and those problems can be (much) bigger than when 
+ * using normal GrapgGenerator. The tradeoff is that the problems are less 
+ * representative of real diagnosis problems, it should therefore only be used
+ * for benchmarking purposes.
  * @author Frans van den Heuvel
  */
 public class GraphPerfGenerator extends GraphGenerator
@@ -44,7 +49,8 @@ public class GraphPerfGenerator extends GraphGenerator
     /**
      * Generate a BA graph with GraphObservation object without a certain error 
      * position. Useful for performance testing larger networks.
-     * @return 
+     * @return GraphObs object with only the basic problem 
+     * (i.e. network plus observations)
      */
     @Override
     public GraphObs generateBAGraph(int size, int linksPerStep, boolean onlymax, 
@@ -126,7 +132,14 @@ public class GraphPerfGenerator extends GraphGenerator
         return grOb;
     }
     
-    // Same as GraphGen to keep them interchangable
+    /**
+     * Generate a graph according to Barabasi–Albert model. Wrapper method
+     * for using Settings objects
+     * @param gs GraphGenSettings object containing all the settings normally
+     * used with generateBAGraph()
+     * @return GraphObs object with only the basic problem 
+     * (i.e. network plus observations)
+     */
     @Override
     public GraphObs generateBAGraph(GraphGenSettings gs)
     {
@@ -137,7 +150,12 @@ public class GraphPerfGenerator extends GraphGenerator
                 gs.difference, gs.timeSyncT0);
     }
     
-    // Similar to GraphGen functions but made for Performance testing
+    /**
+     * Add a vertex according to Barabasi–Albert model.
+     * @param g Graph object to which the vertex needs to be added
+     * @param links Max of edges to connect the new vertex with
+     * @param onlymax Must find max edges or between (1,Max)
+     */
     private void BAaddVertex(Graph g, int links, boolean onlymax)
     {
         Random rand = new Random();
@@ -212,9 +230,9 @@ public class GraphPerfGenerator extends GraphGenerator
     
      /** 
      * The dirty method for adding bounds. Bounds are between [0, 100).
-     * <b>WARNING: Creates inconsistent networks !</b>.  
-     * @param graphIn
-     * @return 
+     * <b>WARNING: Can create inconsistent networks !</b>.  
+     * @param graphIn Graph which will be initialized
+     * @return Graph with initialized edges
      */
     private Graph initializeBounds(Graph graphIn)
     {
@@ -230,7 +248,11 @@ public class GraphPerfGenerator extends GraphGenerator
         return graphIn;
     }
 
-    /* Adds random errors and tries to use the correct length */
+    /**
+     * Generates and adds error to a problem. 
+     * @param graphPlusObser Problem description without observations
+     * @param graphSettings Settings used to generate problems
+     */
     private void addErrors(GraphObs graphPlusObser, GraphGenSettings graphSettings)
     {
         Random rand = new Random();
@@ -347,7 +369,17 @@ public class GraphPerfGenerator extends GraphGenerator
     /**
      * Generate a problem using a Plan-like network as basis without a certain 
      * error position. Useful for performance testing larger networks.
-     * @return 
+     * @param line number of plans coming together
+     * @param linelb lowerbound on plansize
+     * @param lineub upperbound on plansize
+     * @param maxLineCon how much the plans are interconnected 
+     * @param maxVertCon how much 2 plans can be interconnected
+     * @param observations # false observations 
+     * @param obsLength Length of the observations added (1 path with edge size)
+     * @param diff Percentage in int (ie. 50% = 50) that will be added (or
+     * subtracted when negative) of the observation (path) prediction
+     * @param zeroPoint Add a time synchronization point  
+     * @return Object with problem info
      */
     public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, 
             int maxLineCon, int maxVertCon, int observations, int obsLength, 
@@ -468,6 +500,14 @@ public class GraphPerfGenerator extends GraphGenerator
         return grOb;
     }
     
+    
+    /**
+     * Generate a problem using a Plan-like network as basis without a certain 
+     * error position. Useful for performance testing larger networks.
+     * Wrapper method to use Setttings objects.
+     * @param gs GraphGenSettingsobject containing all the settings
+     * @return Problem with a graph and some observations
+     */
     public GraphObs generatePlanlikeGraph(GraphGenSettings gs)
     {
         if(gs.type != GraphGenSettings.PLANLIKEGRAPH)
@@ -478,6 +518,11 @@ public class GraphPerfGenerator extends GraphGenerator
                 gs.timeSyncT0);
     }
     
+    /**
+     * A wrapper method to use any GraphGenSettings as input.
+     * @param gs GraphGenSettingsobject containing all the settings
+     * @return Object containing the problem description.
+     */
     public GraphObs generateProblem(GraphGenSettings gs)
     {
         if(gs.type == GraphGenSettings.BAGRAPH)

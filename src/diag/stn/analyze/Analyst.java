@@ -290,6 +290,8 @@ public class Analyst
         return diagnosisList.toArray(new Diagnosis[diagnosisList.size()]);
     }
     
+    /* Underlying generateDiagnosis method used to recursively traverse the tree
+     * of problem edges */ 
     private void generateDiagnosis(Diagnosis diagOriginal, LinkedList<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
     {
         if(wronglyPredicted.isEmpty())
@@ -412,7 +414,9 @@ public class Analyst
         return conDiagnoses.toArray(new ConDiagnosis[conDiagnoses.size()]);
     }
     
-    public LinkedList<ConDiagnosis> generateConDiagnosis(ConDiagnosis conDiagOri, 
+    /* Underlying generateConDiagnosis method used to recursively traverse the 
+    tree of problem edges for a consistency based diagnosis */ 
+    private LinkedList<ConDiagnosis> generateConDiagnosis(ConDiagnosis conDiagOri, 
             LinkedList<GraphPath> faultyPaths , LinkedList<GraphPath> testedPaths)
     {
         LinkedList<ConDiagnosis> allFullDiag = new LinkedList();
@@ -484,7 +488,7 @@ public class Analyst
     }
     
     /**
-     * Simple system out print of all paths generated
+     * Simple System.out print of all paths generated.
      */
     public void printPaths()
     {
@@ -538,7 +542,7 @@ public class Analyst
     }
     
     /**
-     *  Print all observations
+     *  Print weights for all observations.
      */
     public void printWeights()
     {
@@ -551,7 +555,7 @@ public class Analyst
     }
     
     /**
-     * Prints all the different diagnosis on system out
+     * Prints all the different diagnosis on System.out.
      */
     public void printDiagnosis()
     {
@@ -575,6 +579,8 @@ public class Analyst
         return diagnosisList.size();
     }
     
+    /* Simple method for generating all the paths for some observation given 
+    some traversed path. Stores them to obsPaths */
     private void simplePaths(GraphPath graphPath, Observation obs)
     {
         // need to create new set for each new observation!

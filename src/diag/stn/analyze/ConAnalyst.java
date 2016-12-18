@@ -27,7 +27,7 @@ import java.util.LinkedList;
 /**
  * Analyst for consistency based diagnosis with the use of a fault model similar
  * to MAC diagnosis. 
- * @author frans
+ * @author Frans van den Heuvel
  */
 public class ConAnalyst extends Analyst
 {
@@ -148,6 +148,11 @@ public class ConAnalyst extends Analyst
         }
     }
     
+     /**
+     * Get a list of all possible full diagnosis for this model. Needs propagateWeights
+     * to be done before diagnosis can start.
+     * @return A list of possible Diagnosis for the model
+     */
     @Override
     public Diagnosis[] generateDiagnosis()
     {
@@ -195,6 +200,7 @@ public class ConAnalyst extends Analyst
         return diagnosisList.toArray(new Diagnosis[diagnosisList.size()]);
     }
     
+    // Actual recursive implementation
     private void generateDiagnosis(Diagnosis diagOriginal, LinkedList<GraphPath> wronglyPredicted, ArrayList<GraphPath> testedPaths)
     {
         if(wronglyPredicted.isEmpty())

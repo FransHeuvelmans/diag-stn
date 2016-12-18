@@ -37,7 +37,7 @@ public class DiagSTN
 {
     public static final boolean PRINTACC = true;
     public static final boolean PRINTWARNING = false;
-    public static final boolean IGNOREINCONSIST = true;
+    public static final boolean IGNOREINCONSIST = false;
     public static final boolean PATHPRINT = true;
     
     /**
@@ -80,6 +80,12 @@ public class DiagSTN
         
     }
     
+    /**
+     * Method loads a yaml file into a Graph object and adds the observations to
+     * the model. Afterwards it runs normal Diag-STN on the network and prints
+     * all the results.
+     * @param file String with pathname to the file.
+     */
     public static void readAndProcess(String file)
     {
         try
@@ -137,6 +143,10 @@ public class DiagSTN
         
     }
     
+    /**
+     * Runs an experiments given some hardcoded settings.
+     * @return If the error was sound by the experiment
+     */
     public static boolean runRandomGen()
     {
         // for now no input variables (maybe later catch commandline input)
@@ -185,9 +195,12 @@ public class DiagSTN
         return CorrectCheck.errorInDiagnoses(strct, diag);
     }
     
+    /**
+     * Run a (simple) experiment only once and print its results to System.Out
+     */
     public static void runSimpleRandomGen()
     {
-        GraphGenerator gen = new GraphPerfGenerator();
+        GraphGenerator gen = new GraphGenerator();
         
 //        GraphObs strct = gen.generateBAGraph(300, 3, false, 4, 10, 10, false);
         GraphObs strct = gen.generatePlanlikeGraph(20, 30, 60, 2, 2, 3, 5, 0, false);
@@ -211,6 +224,9 @@ public class DiagSTN
         al.printDiagnosis();
     }
     
+    /**
+     * Does a number of experiments given some hardcoded settings.
+     */
     public static void runBenchmark()
     {
         GraphGenerator gen = new GraphGenerator();
@@ -235,7 +251,7 @@ public class DiagSTN
             else
             {
                 writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
-                        + "diagLines;conDuration;resultDiff\n");
+                        + "diagLines;conDuration;resultDiff;diagDiff\n");
             }
             writer.flush();
         } catch (IOException ex)
@@ -300,7 +316,7 @@ public class DiagSTN
                 writer.append(fullPredIntSize + ";" + fullNumEdges + ";" +
                         errorFound + ";" + (end - start) + ";" +
                          al.diagSize() + ";" + (endCon - startCon) + ";" +
-                        resultDiff + "\n");
+                        resultDiff + ";" + (cdiag.length - diag.length) + "\n");
                 if(i % 100 == 0)
                     writer.flush();
             } catch (Throwable ex)
@@ -321,16 +337,26 @@ public class DiagSTN
         
     }
     
+    /**
+     * Quick method for running a number of hardcoded settings through 
+     * runSpdBenchmark()
+     */
     public static void runSpdBenchmark()
     {
         GraphGenSettings setting = new GraphGenSettings();
-        setting.BAGraph(50, 2, false, 2, 5, 20, false);
-//        setting.planlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
-        runSpdBenchmark(setting,10000,false);
+//        setting.BAGraph(50, 2, false, 2, 5, 20, false);
+        setting.planlikeGraph(6, 40, 50, 2, 2, 4, 7, 20, true);
+        runSpdBenchmark(setting,40000,false);
         System.out.println(setting);
-
-    }   
+    }
     
+    /**
+     * Run a number of (simple / performance) experiments. Uses the PerfGenerator
+     * @param setting Settings object for the test
+     * @param iter How many tests need to be run
+     * @param SOAnalyst Use an SOAnalyst or the normal Analyst 
+     * (DiagSTN-SO or plain DiagSTN)
+     */
     public static void runSpdBenchmark(GraphGenSettings setting, int iter, boolean SOAnalyst)
     {
         GraphPerfGenerator gen = new GraphPerfGenerator();
@@ -375,7 +401,7 @@ public class DiagSTN
         try
         {
             writer = new FileWriter(location,true);
-            writer.append("totalNumEdges;numUniqueEdges;duration\n");
+            writer.append("uniqueEdges;totalEdges;duration\n");
             writer.flush();
         } catch (IOException ex)
         {
@@ -445,6 +471,11 @@ public class DiagSTN
         
     }
     
+    /**
+     * Check for some problem if normal DiagSTN can find the problem. 
+     * @param go
+     * @return 
+     */
     private static boolean solvable(GraphObs go)
     {
         Analyst al = new Analyst(go.graph);
@@ -452,15 +483,17 @@ public class DiagSTN
         {
             al.addObservation(ob);
         }
-        long start = System.nanoTime();
         al.generatePaths();
         al.propagateWeights();
         Diagnosis[] diag = al.generateDiagnosis();
-        long finish = System.nanoTime();
         boolean errorFound = CorrectCheck.errorInDiagnoses(go, diag);
         return errorFound;
     }
     
+    /**
+     * Runs a testcase as described in the article Maximum-confirmation 
+     * diagnoses by Nico Roos (Section 6.6)
+     */
     public static void testCase1()
     {
         int ids = 0;
@@ -513,6 +546,9 @@ public class DiagSTN
         analyst.printDiagnosis();
     }
     
+    /**
+     * Slightly more difficult testcase
+     */
     public static void testCase2()
     {
         int ids = 0;
@@ -568,6 +604,9 @@ public class DiagSTN
         analyst.printDiagnosis();
     }
     
+    /**
+     * More complex testcase
+     */
     public static void testCase3()
     {
         int ids = 0;
@@ -642,6 +681,9 @@ public class DiagSTN
         analyst.printDiagnosis();
     }
 
+    /**
+     * More complex testing
+     */
     public static void testInitExt()
     {
         GraphGenerator gen = new GraphGenerator();

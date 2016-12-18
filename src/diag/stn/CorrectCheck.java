@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 
 /**
- * Class with static methods for showing and checking how good the diagnoses 
- * are. Plus methods for comparing answers, and input problems.
+ * (Assistance) Class with static methods, for showing and checking how good the 
+ * diagnoses are. Plus methods for comparing answers, and input problems.
  * @author Frans van den Heuvel
  */
 public  class CorrectCheck
@@ -48,9 +48,9 @@ public  class CorrectCheck
     /**
      * See if there is a MAC diagnosis among all diagnoses that has the actual 
      * introduced errors.
-     * @param grOb
-     * @param diagnoses
-     * @return 
+     * @param grOb Problem description
+     * @param diagnoses Array of diagnoses
+     * @return all the original errors in a diagnosis
      */
     public static boolean errorInDiagnoses(GraphObs grOb, Diagnosis[] diagnoses)
     {
@@ -95,9 +95,9 @@ public  class CorrectCheck
     /**
      * See if there is a Consistency based diagnosis that has the 
      * actual introduced errors.
-     * @param grOb
-     * @param diagnoses
-     * @return 
+     * @param grOb Problem description
+     * @param diagnoses Array of diagnoses
+     * @return all errors found in a diagnosis
      */
     public static boolean errorInConDiagnoses(GraphObs grOb, ConDiagnosis[] diagnoses)
     {
@@ -127,9 +127,9 @@ public  class CorrectCheck
      * Compare the diagnosis size of two answer sets. Used to compare
      * the possible answers when using Consistency based diagnosis (+ Fault Model)
      * vs MAC diagnosis
-     * @param a
-     * @param b
-     * @return 
+     * @param a Array of diagnoses using some method
+     * @param b Array of diagnoses using some other method
+     * @return size in time difference (a - b)
      */
     public static int compareDiagnosisSize(Diagnosis[] a, Diagnosis[] b)
     {
@@ -196,7 +196,7 @@ public  class CorrectCheck
     }
     
     /**
-     * takes the union of all the path bound (intervals)
+     * Takes the union of all the path bound (intervals)
      * @param paths Arraylist of ints with the bounds
      * @return int[2] array with the union bounds
      */

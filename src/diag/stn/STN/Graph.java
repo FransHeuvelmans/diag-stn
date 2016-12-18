@@ -118,6 +118,11 @@ public class Graph
         incoming.add(e);
     }
     
+    /**
+     * Removes an edge from the graph.
+     * @param de Exact object reference to the edge that needs to be removed
+     * @return Remove successful
+     */
     public boolean removeEdge(DEdge de)
     {
         if(edges.contains(de))
@@ -189,6 +194,11 @@ public class Graph
         return true;
     }
     
+    /**
+     * Set this to make the graph automatically reverse edges with a lower- and
+     * upperbound which are negative.
+     * @param checkForNeg boolean flag, true for reverse
+     */
     public void reverseNegativeEdge(boolean checkForNeg)
     {
         checkNegativeEdges = checkForNeg;
@@ -196,6 +206,7 @@ public class Graph
     
     /**
      * Find all vertices that can be reached in 1 step from given Vertex
+     * @param last The vertex from which those others can be reached
      * @return LinkedList with all Vertices near
      */
     public LinkedList<Vertex> adjacentNodes(Vertex last)
@@ -213,8 +224,8 @@ public class Graph
     
     /**
      * Out degree. How many edges come from this Vertex to some other Vertex
-     * @param fro Vertex
-     * @return integer with # edges
+     * @param fro The about vertex
+     * @return integer with number of edges
      */
     public int outDegree(Vertex fro)
     {
@@ -224,6 +235,12 @@ public class Graph
         return edges.size();
     }
     
+    /**
+     * What vertices go into this vertex.
+     * @param to The vertex other go into
+     * @return Linked list with all the vertex objects from which edges go into
+     * target vertex
+     */
     public LinkedList<Vertex> incomingNodes(Vertex to)
     {
         LinkedHashSet<DEdge> edges = reverseMap.get(to);
@@ -240,8 +257,8 @@ public class Graph
     
     /**
      * In degree. How many edges come to this Vertex from some other Vertex
-     * @param to Vertex 
-     * @return integer with # edges
+     * @param to About vertex
+     * @return integer with number of edges
      */
     public int inDegree(Vertex to)
     {
@@ -252,7 +269,9 @@ public class Graph
     }
     
     /**
-     * What possible edges can be used from given Vertex
+     * What possible edges can be used from given Vertex.
+     * @param v About vertex
+     * @return Set containing all out edges
      */
     public LinkedHashSet<DEdge> possibleEdges(Vertex v)
     {
@@ -260,7 +279,9 @@ public class Graph
     }
     
     /**
-     * What edges arrive at a certain vertex
+     * What edges arrive at a certain vertex.
+     * @param v About vertex
+     * @return Set with all incoming edges
      */
     public LinkedHashSet<DEdge> incomingEdges(Vertex v)
     {
@@ -326,7 +347,7 @@ public class Graph
      * @param to Destination/ending Vertex
      * @param lb lower bound on the time needed (cost)
      * @param ub upper bound on the time needed (cost) 
-     * @return 
+     * @return True if successful change, false if otherwise
      */
     public boolean changeEdgeBounds(Vertex fro, Vertex to, int lb, int ub)
     {
@@ -407,11 +428,20 @@ public class Graph
         return nodes.size();
     }
     
+    /**
+     * Returns the current state of the NegativeCheck flag. If this flag is set,
+     * than all edges with a negative upper and lower bound are reversed.
+     * @return true is flag = true
+     */
     public boolean getNegativeEdgeCheck()
     {
         return checkNegativeEdges;
     }
     
+    /**
+     * A deep copy method. Uses the old ID's and names.
+     * @return Graph copy
+     */
     public Graph copy()
     {
         Graph clone = new Graph();

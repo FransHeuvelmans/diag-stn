@@ -38,11 +38,21 @@ public class SOAnalyst extends Analyst
     HashMap<GraphPath,Boolean> consistencyHazard;
     HashMap<GraphPath,Integer> predSizes;
     
+    /**
+     * Creates a new analyst for a given Graph. Should be only used on problems
+     * which have a time synchronization vertex.
+     * @param g preferably instantiated Graph object that needs to be analyzed
+     */
     public SOAnalyst(Graph g)
     {
         super(g);
     }
     
+    /**
+     * Adds an observation that needs to be tested and is possibly used to create
+     * a diagnosis.
+     * @param ob instantiated Observation object.
+     */
     @Override
     public void addObservation(Observation ob)
     {
@@ -58,6 +68,10 @@ public class SOAnalyst extends Analyst
         observations.add(ob);
     }
     
+    /**
+     * Generates all paths for each observation and stores them. Preliminary 
+     * step before diagnosis.
+     */
     @Override
     public void generatePaths()
     {
@@ -174,6 +188,7 @@ public class SOAnalyst extends Analyst
                 + " generating the paths");
     }
     
+    // Calculate the lower and upper bound for some path and store them (diffstore)
     private void pathCalc(GraphPath g, int lb, int ub)
     {
         int dlb,dub;

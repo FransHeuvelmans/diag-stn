@@ -45,9 +45,13 @@ public class GraphGenSettings {
     
     public GraphGenSettings()
     {
-        // nuthin, needs setting
+        // nothing, needs setting
     }
     
+    /**
+     * Creates a Setting object for a certain type of network
+     * @param whatType 
+     */
     public GraphGenSettings(int whatType)
     {
         if(whatType == BAGRAPH)
@@ -58,6 +62,9 @@ public class GraphGenSettings {
             System.err.println("Wrong type of default Graph Settings generated");
     }
     
+    /**
+     * Transform Setting object to default Barabàsi-Albert graph settings.
+     */
     public void BAGraph()
     {
         // use some defaults settings
@@ -73,6 +80,17 @@ public class GraphGenSettings {
         this.timeSyncT0 = false;
     }
     
+    /**
+     * Set specific Barabàsi-Albert graph settings.
+     * @param size Number of vertices
+     * @param linksPerStep when adding a vertex, how many edges need to be added
+     * @param onlymax Always try to add max edges or a random amount (1-max)
+     * @param observations # false observations
+     * @param obsLength Length of the observations added (1 path with edge size)
+     * @param diff Percentage in int (ie. 50% = 50) that will be added (or
+     * subtracted when negative) of the observation (path) prediction
+     * @param zeroPoint Add a time synchronization point 
+     */
     public void BAGraph(int size, int linksPerStep, boolean onlymax, 
             int observations, int obsLength, int diff, boolean zeroPoint)
     {
@@ -88,6 +106,9 @@ public class GraphGenSettings {
         this.timeSyncT0 = zeroPoint;
     }
     
+    /**
+     * Transform Setting object to default Plan-like graph settings.
+     */
     public void planlikeGraph()
     {
         // set some sane default settings
@@ -106,6 +127,19 @@ public class GraphGenSettings {
         this.timeSyncT0 = false;
     }
     
+    /**
+     * Set specific Plan-like graph settings
+     * @param line Number of plans combined for this network
+     * @param linelb Lower bound on plan length in edges
+     * @param lineub Upper bound on the plan length in edges 
+     * @param maxLineCon With how many plans is one plan connected
+     * @param maxVertCon How many edges are used to connect 2 plans
+     * @param observations # false observations 
+     * @param obsLength Length of the observations added (1 path with edge size)
+     * @param diff Percentage in int (ie. 50% = 50) that will be added (or
+     * subtracted when negative) of the observation (path) prediction
+     * @param zeroPoint Add a time synchronization point  
+     */
     public void planlikeGraph(int line, int linelb, int lineub, 
             int maxLineCon, int maxVertCon, int observations, int obsLength, 
             int diff, boolean zeroPoint)
@@ -124,6 +158,10 @@ public class GraphGenSettings {
         this.timeSyncT0 = zeroPoint;
     }
     
+    /**
+     * Creates a string that describes the full Settings object.
+     * @return String object with a full description.
+     */
     @Override
     public String toString()
     {

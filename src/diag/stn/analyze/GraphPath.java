@@ -166,7 +166,7 @@ public class GraphPath
     /**
      * A basic check if 2 GraphPaths use the same vertices (v with the same id) 
      * @param other
-     * @return 
+     * @return true if paths have the same vertex id's
      */
     public boolean isSimilar(GraphPath other)
     {

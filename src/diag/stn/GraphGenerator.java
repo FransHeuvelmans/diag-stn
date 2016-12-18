@@ -51,7 +51,7 @@ public class GraphGenerator
         public List<DEdge> errorEdges; // per obs
         public List<Integer> errorDiffs; // per edge
         
-        public GraphGenSettings settings;
+        public GraphGenSettings settings; // Settings used to generate Problem
         public boolean success;
     }
     
@@ -195,6 +195,13 @@ public class GraphGenerator
         return grOb;
     }
     
+    /**
+     * Generate a graph according to Barabasi–Albert model. Wrapper method
+     * for using Settings objects
+     * @param gs GraphGenSettings object containing all the settings normally
+     * used with generateBAGraph()
+     * @return Object with the Graph and the observations
+     */
     public GraphObs generateBAGraph(GraphGenSettings gs)
     {
         if(gs.type != GraphGenSettings.BAGRAPH)
@@ -204,6 +211,12 @@ public class GraphGenerator
                 gs.difference, gs.timeSyncT0);
     }
     
+    /**
+     * Add a vertex according to Barabasi–Albert model
+     * @param g Graph object to which the vertex needs to be added
+     * @param links Max of edges to connect the new vertex with
+     * @param onlymax Must find max edges or between (1,Max)
+     */
     private void BAaddVertex(Graph g, int links, boolean onlymax)
     {
         Random rand = new Random();
@@ -277,13 +290,13 @@ public class GraphGenerator
     }
     
     /**
-     * Returns a list of predicted bounds on a path
-     * @param g
-     * @param lb
-     * @param ub
-     * @param end
-     * @param graph
-     * @return 
+     * Returns a list of predicted bounds on a path. Uses simple DFS.
+     * @param g Traversed path (Start with only starting vert)
+     * @param lb Lower bound on time already traversed
+     * @param ub Upper bound on time already traversed
+     * @param end End vertex
+     * @param graph Base graph which is traversed
+     * @return list with int[2] = {lower bound, upper bound}
      */
     public static ArrayList<int[]> pathCalc(GraphPath g, int lb, int ub, Vertex end, 
             Graph graph)
@@ -325,10 +338,10 @@ public class GraphGenerator
     /**
      * Similar to pathCalc but returns all the paths for some pair of vertices 
      * instead of the bounds
-     * @param g
-     * @param end
-     * @param graph
-     * @return 
+     * @param g Traveled path (start with path containing only starting pos)
+     * @param end End vertex
+     * @param graph Graph object which is being traversed 
+     * @return List with all the paths as GraphPath objects
      */
     public static ArrayList<GraphPath> obsPaths(GraphPath g, Vertex end, Graph graph)
     {
@@ -362,8 +375,8 @@ public class GraphGenerator
     
     /**
      * Quick method for propagating the weights along a graph path
-     * @param gp
-     * @return 
+     * @param gp GraphPath object with the path that needs propagation.
+     * @return int array with [0] lower bound & [1] upper bound
      */
     public int[] propPath(GraphPath gp)
     {
@@ -407,10 +420,12 @@ public class GraphGenerator
      * @param lineub upperbound on plansize
      * @param maxLineCon how much the plans are interconnected 
      * @param maxVertCon how much 2 plans can be interconnected
-     * @param falseObs how many false observations are added
-     * @param trueObs how many true observations are added
-     * @param zeroPoint add a T0?
-     * @return 
+     * @param observations # false observations 
+     * @param obsLength Length of the observations added (1 path with edge size)
+     * @param diff Percentage in int (ie. 50% = 50) that will be added (or
+     * subtracted when negative) of the observation (path) prediction
+     * @param zeroPoint Add a time synchronization point  
+     * @return Object with all problem info
      */
     public GraphObs generatePlanlikeGraph(int line, int linelb, int lineub, 
             int maxLineCon, int maxVertCon, int observations, int obsLength, 
@@ -575,6 +590,12 @@ public class GraphGenerator
         return grOb;
     }
     
+    /**
+     * Create a Graph that resembles multiple plans that have a few connections.
+     * Wrapper method to use Setttings objects.
+     * @param gs GraphGenSettingsobject containing all the settings
+     * @return Problem with a graph and some observations
+     */
     public GraphObs generatePlanlikeGraph(GraphGenSettings gs)
     {
         if(gs.type != GraphGenSettings.PLANLIKEGRAPH)
@@ -1408,8 +1429,9 @@ public class GraphGenerator
     /**
      * Given some freshly initialized Graph and some intended errors, add these
      * errors without making the graph or the errors inconsistent!
-     * @param graph
-     * @param intendedEs 
+     * @param gO GraphObs object containing the problem.
+     * @param fgroup All the possible locations the new errors should be placed.
+     * @param settings Settings used for the problem generation.
      */
     private boolean initializeErrors(GraphObs gO, FalsieGroup fgroup, 
             GraphGenSettings settings)
@@ -1697,8 +1719,9 @@ public class GraphGenerator
      * Given some freshly initialized Graph and some intended errors, add these
      * errors without making the graph or the errors inconsistent! 
      * special ZeroPoint version
-     * @param graph
-     * @param intendedEs 
+     * @param gO GraphObs object containing the problem.
+     * @param fgroup All the possible locations the new errors should be placed.
+     * @param settings Settings used for the problem generation.
      */
     private boolean initializeZPErrors(GraphObs gO, FalsieGroup fgroup, 
             GraphGenSettings settings)
@@ -2108,7 +2131,9 @@ public class GraphGenerator
         return true;
     }
     
-    // Just some test code
+    /**
+     * Runs a test to see if Ancestry is correctly detected.
+     */
     public void testAncest()
     {
         Graph test = new Graph();
@@ -2168,6 +2193,10 @@ public class GraphGenerator
         System.out.print(out.get(4)[0] + " - " + out.get(4)[1] + "\n");
     }
     
+    /**
+     * Initializes a test graph. Used for testing outside GraphGenerator.
+     * @return An initialized graph
+     */
     public Graph testInit()
     {
         Graph test = new Graph();
@@ -2339,9 +2368,10 @@ public class GraphGenerator
     }
     
     /**
-     * Tests the consistency
-     * @param go
-     * @return 
+     * Tests the consistency for each of the observations.
+     * @param go GraphObs which has all the information for a Problem
+     * @return False is 2 or more paths on some observation are inconsistent
+     * (do not overlap)
      */
     public boolean checkConsist(GraphObs go)
     {
