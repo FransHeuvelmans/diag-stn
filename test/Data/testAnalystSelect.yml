@@ -1,0 +1,61 @@
+# Sample yaml description of Graph
+# For use in Diag-STN
+# Frans van den Heuvel 2016
+
+vertices:
+    -   name: 'a'
+        id: 0
+    -   name: 'b'
+        id: 1
+    -   name: 'c'
+        id: 2
+    -   name: 'd'
+        id: 3
+    -   name: 'e'
+        id: 4
+    -   name: 'f'
+        id: 5
+    -   name: 'g'
+        id: 6
+
+edges:
+    -   start: 0
+        end: 1
+        lb: 10
+        ub: 20
+    -   start: 1
+        end: 2
+        lb: 5
+        ub: 7
+    -   start: 2
+        end: 3
+        lb: 50
+        ub: 60
+    -   start: 3
+        end: 4
+        lb: 10
+        ub: 15
+    -   start: 5
+        end: 6
+        lb: 3
+        ub: 10
+    -   start: 6
+        end: 2
+        lb: 9
+        ub: 18
+        
+observations:
+    -   start: 0
+        end: 4
+        lb: 100
+        ub: 127
+        # 95 - 122 for 20 change
+    -   start: 5
+        end: 4
+        lb: 97
+        ub: 128
+
+# In case a certain type of analyst is needed it can be noted here
+# norm = normal , so = Single Origin / t0 / time synchronization
+# Warning ! Only use SO when it has a t0 or it will malfunction
+analyst: 'norm'

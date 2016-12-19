@@ -63,7 +63,7 @@ public class DiagSTN
 //             testCase2();
 //             testCase3();
 //             testInitExt();
-//             readAndProcess("/home/frans/Code/diagSTN/diag-stn/test/Data/partConsistent.yml");
+//             readAndProcess("/home/frans/Code/diag-stn/test/Data/testSerialization.yml");
 //             out = "" + runRandomGen();
 //             runSimpleRandomGen();
 //             runBenchmark();
@@ -96,6 +96,7 @@ public class DiagSTN
             
             Graph graph = new Graph();
             
+            // Map must have vertices
             List<Object> vertices = (List) fileMap.get("vertices");
             for(Object x: vertices)
             {
@@ -104,6 +105,7 @@ public class DiagSTN
                 graph.addVertex(v);
             }
             
+            // Map must have some edges
             List<Object> edges = (List) fileMap.get("edges");
             for(Object y: edges)
             {
@@ -115,7 +117,29 @@ public class DiagSTN
                 graph.addEdge(start, end, (int)edgeMap.get("lb"), (int)edgeMap.get("ub"));
             }
             
-            Analyst analyst = new Analyst(graph);
+            Analyst analyst;
+            if(fileMap.containsKey("analyst"))
+            {
+                String diagnoseType = (String) fileMap.get("analyst");
+                switch(diagnoseType.toLowerCase())
+                {
+                    case "norm":
+                    case "normal":
+                    case "n":
+                        analyst = new Analyst(graph);
+                        break;
+                    case "so":
+                    case "single-origin":
+                        analyst = new SOAnalyst(graph);
+                        break;
+                    default:
+                        analyst = new Analyst(graph);
+                }
+            }
+            else
+                analyst = new Analyst(graph);
+            
+            // Map must have some observations, or there is nothing to diagnose
             List<Object> observations = (List) fileMap.get("observations");
             for(Object z: observations)
             {
@@ -139,6 +163,9 @@ public class DiagSTN
         {
             System.err.println("File does not exist");
             Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Throwable e)
+        {
+            System.err.println("Could not read YAML");
         }
         
     }

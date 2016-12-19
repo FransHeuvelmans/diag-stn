@@ -299,10 +299,10 @@ public class Analyst
         GraphPath path = wronglyPredicted.pop();    
         testedPaths.add(path);
         if(!diagOriginal.edgeUsed(path)) // if path is not solved try to solve it
-        {   
+        {
             // ie. if in the current diagnosis an edge has already been solved on the current path
             for(int i = 1; i < path.stepSize(); i++)
-            { 
+            {
                 DEdge edge = path.getStepE(i);  // for EACH edge on this path!
                 Diagnosis diag = diagOriginal.copy(); // new Diagnosis
 

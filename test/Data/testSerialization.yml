@@ -48,8 +48,7 @@ edges:
         lb: 10
         ub: 15
 
-# Finally an _optional_ block for Observations
-# (For now always use it because after the yaml is given by commandline it is processed immideately)
+# Finally a block for Observations
 # Again uses the id for start and end nodes!
 observations:
     -   start: 0
@@ -61,4 +60,3 @@ observations:
         lb: 66
         ub: 80
 
-# TODO: Add fixed times and other options!
