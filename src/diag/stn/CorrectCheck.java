@@ -50,7 +50,7 @@ public  class CorrectCheck
      * introduced errors.
      * @param grOb Problem description
      * @param diagnoses Array of diagnoses
-     * @return all the original errors in a diagnosis
+     * @return if all the original errors are found in one of the diagnosis
      */
     public static boolean errorInDiagnoses(GraphObs grOb, Diagnosis[] diagnoses)
     {
@@ -90,6 +90,57 @@ public  class CorrectCheck
             }
         }
         return found;
+    }
+    
+    /**
+     * What percentage of diagnosis contains the "true" errors. Similar to 
+     * errorInDiagnosis but returns a percentage
+     * @param grOb Problem description
+     * @param diagnoses Array of diagnoses
+     * @return percentage if found, else 0
+     */
+    public static double percentErrorInDiagnosis(GraphObs grOb, Diagnosis[] diagnoses)
+    {
+        int errorDiagnosis = 0;
+        for(Diagnosis d : diagnoses)
+        {
+            boolean hasAllErrors = true;
+            // Checks for each of the errors if it is in the diagnosis
+            for(int i = 0; i < grOb.errorEdges.size(); i++)
+            {
+                int trueError = grOb.errorDiffs.get(i);
+                if(trueError == 0)
+                    continue; // no error introduced TODO improve checking
+                
+                // Needs to have used each malfunctioning edge in the GraphObs
+                // ie. each introduced error
+                DEdge errorEdg = grOb.errorEdges.get(i);
+                if(!d.edgeUsed(errorEdg))
+                {
+                    hasAllErrors = false;
+                    break;
+                }
+                else    // its in there but does it have the correct bounds?
+                {
+                    int[] diagBounds = d.getChanges(errorEdg);
+                    if(trueError < diagBounds[0] || trueError > diagBounds[1])
+                    {
+                        hasAllErrors = false;
+                        // Still a problem , not the correct bounds
+                        break;
+                    }
+                }
+            }
+            if(hasAllErrors)
+            {
+                errorDiagnosis++;
+            }
+        }
+        if(errorDiagnosis < 1)
+            return 0;
+        else
+            return ((double) errorDiagnosis / (double) diagnoses.length) * 100;
+        // Return percentage that was correct
     }
     
     /**
@@ -133,38 +184,28 @@ public  class CorrectCheck
      */
     public static int compareDiagnosisSize(Diagnosis[] a, Diagnosis[] b)
     {
-        int totalSizeA = 0;
-        int countA = a.length;
-        for(Diagnosis da : a)
+        int totalSizeA = diagnosisSize(a);
+        int totalSizeB = diagnosisSize(b);
+        
+        // Old method is kept to ensure no regressions are introduced
+        return (totalSizeA - totalSizeB);
+    }
+    
+    public static int diagnosisSize(Diagnosis[] diags)
+    {
+        int totalSize = 0;
+        for(Diagnosis da : diags)
         {
-            int diagSize = 0;
             DEdge[] changed = da.getEdgesChanged();
             for(DEdge cEdge : changed)
             {
                 int[] chnges = da.getChanges(cEdge);
                 int chngSize = chnges[1] - chnges[0];
-                totalSizeA += chngSize;
+                totalSize += chngSize;
             }
         }
-        //double ansA = (double) totalSizeA; // no average so no / (double) countA
         
-        int totalSizeB = 0;
-        int countB = b.length;
-        for(Diagnosis db : b)
-        {
-            int diagSize = 0;
-            DEdge[] changed = db.getEdgesChanged();
-            for(DEdge cEdge : changed)
-            {
-                int[] chnges = db.getChanges(cEdge);
-                int chngSize = chnges[1] - chnges[0];
-                totalSizeB += chngSize;
-            }
-        }
-        //double ansB = (double) totalSizeB;
-        // no average so no / (double) countB
-        
-        return (totalSizeA - totalSizeB);
+        return totalSize;
     }
     
     /**
@@ -200,7 +241,7 @@ public  class CorrectCheck
      * @param paths Arraylist of ints with the bounds
      * @return int[2] array with the union bounds
      */
-    public static int[] unionPaths(ArrayList<int[]> paths)
+    private static int[] unionPaths(ArrayList<int[]> paths)
     {
         if(paths.size() < 1)
             System.err.println(" Cant combine empty arraylist!");

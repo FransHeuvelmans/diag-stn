@@ -88,9 +88,8 @@ public class DiagSTN
      */
     public static void readAndProcess(String file)
     {
-        try
+        try (InputStream input = new FileInputStream(new File(file)))
         {
-            InputStream input = new FileInputStream(new File(file));
             Yaml yaml = new Yaml();
             Map<String, Object> fileMap = (Map<String, Object>) yaml.load(input);
             
@@ -254,14 +253,39 @@ public class DiagSTN
     /**
      * Does a number of experiments given some hardcoded settings.
      */
-    public static void runBenchmark()
+    public static void runBenchmark(GraphGenSettings setting, int iter, boolean SOAnalyst)
     {
         GraphGenerator gen = new GraphGenerator();
-        GraphObs strct;
+        GraphObs strct = null;
         Analyst al;
-        boolean SOAnalyst = false;
-        int iter = 10000;
-        String location = "A-i10k-BAGraph-60-2-f-4-5-20-f.csv";
+        //boolean SOAnalyst = false;
+        //int iter = 5000;
+        //String location = "A-i5k-BAGraph-40-2-f-2-7-20-f.csv";
+        // Build output string
+        String analyst, location;
+        if(SOAnalyst)
+            analyst = "SOA";
+        else
+            analyst = "A";
+        if(setting.type == GraphGenSettings.BAGRAPH)
+            location = String.format(analyst +"-i%dk-BAGraph-%d-%d-%b-%d-%d-%d"
+                    + "-%b.csv",(iter / 1000),setting.vertexSize,
+                    setting.BALinksPerVertexAddition,setting.onlyMaxAdditions,
+                    setting.numObservations,setting.observationLength,
+                    setting.difference,setting.timeSyncT0);
+        else if (setting.type == GraphGenSettings.PLANLIKEGRAPH)
+            location = String.format(analyst +"-i%dk-PBGraph-%d-%d-%d-%d-%d-%d"
+                    + "-%d-%d-%b.csv",(iter / 1000),setting.numLines,
+                    setting.lineLengthLB,setting.lineLengthUB,
+                    setting.maxInterLineConnect,setting.maxLineVertConnect,
+                    setting.numObservations,setting.observationLength,
+                    setting.difference,setting.timeSyncT0);
+        else
+        {
+            System.err.println("No normal setting used for benchmark");
+            location = "unknown.csv";
+        }
+        
         // old: A-i5k-BAGraph-60-2-f-2-13-20-f.csv
         // A-i10k-PBGraph-4-8-12-2-2-2-5-20-t.csv
         
@@ -270,34 +294,47 @@ public class DiagSTN
         try
         {
             writer = new FileWriter(location,true);
-            if(SOAnalyst)
-            {
-                writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
-                        + "diagLines;nor-SO\n");
-            }
-            else
-            {
-                writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
-                        + "diagLines;conDuration;resultDiff;diagDiff\n");
-            }
+            // SOAnalyst or normal analyst _should_ output the same info!
+            writer.append("fullPredIntSize;fullNumEdges;errorFound;duration;"
+                    + "diagLines;conDuration;diagSize;cdiagSize\n");
             writer.flush();
         } catch (IOException ex)
         {
             System.err.println("Couldnt open file to write benchresults to");
             Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Throwable throwie)
+        {
+            System.err.println("Benchmarking problem");
+            Logger.getLogger(DiagSTN.class.getName()).log(Level.SEVERE, null, throwie);
         }
         
         long start, end;
         for(int i = 0; i < iter; i++)
         {
             // Generate a new Problem (Pb)
-            strct = gen.generateBAGraph(60, 2, false, 4, 5, 20, false);
-            //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
+//            strct = gen.generateBAGraph(40, 2, false, 2, 7, 20, false);
+//            //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
+//            while(!strct.success)
+//            {
+//                strct = gen.generateBAGraph(40, 2, false, 2, 7, 20, false);
+//                //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
+//            }
+            if(setting.type == GraphGenSettings.BAGRAPH)
+                strct = gen.generateBAGraph(setting);
+            else if(setting.type == GraphGenSettings.PLANLIKEGRAPH)
+                strct = gen.generatePlanlikeGraph(setting);
+            else
+                System.err.println("Faulty setting!");
+            
+            assert strct != null;
             while(!strct.success)
             {
-                strct = gen.generateBAGraph(60, 2, false, 4, 5, 20, false);
-                //strct = gen.generatePlanlikeGraph(4, 8, 12, 2, 2, 2, 5, 20, true);
+                if(setting.type == GraphGenSettings.BAGRAPH)
+                    strct = gen.generateBAGraph(setting);
+                else if(setting.type == GraphGenSettings.PLANLIKEGRAPH)
+                    strct = gen.generatePlanlikeGraph(setting);
             }
+            
             int fullPredIntSize = CorrectCheck.totalPredictionSize(strct);
             int fullNumEdges = CorrectCheck.numberUniqueEdges(strct);
             
@@ -336,14 +373,16 @@ public class DiagSTN
             cal.propagateWeights(); // Is never SO optimized
             Diagnosis[] cdiag = cal.generateDiagnosis();
             endCon = System.nanoTime(); // Both in time
-            resultDiff = -CorrectCheck.compareDiagnosisSize(diag, cdiag);
+            //resultDiff = -CorrectCheck.compareDiagnosisSize(diag, cdiag);
+            int diagSize = CorrectCheck.diagnosisSize(diag);
+            int cdiagSize = CorrectCheck.diagnosisSize(cdiag);
             
             try
             {
                 writer.append(fullPredIntSize + ";" + fullNumEdges + ";" +
                         errorFound + ";" + (end - start) + ";" +
                          al.diagSize() + ";" + (endCon - startCon) + ";" +
-                        resultDiff + ";" + (cdiag.length - diag.length) + "\n");
+                        diagSize + ";" + cdiagSize + "\n");
                 if(i % 100 == 0)
                     writer.flush();
             } catch (Throwable ex)
@@ -366,7 +405,20 @@ public class DiagSTN
     
     /**
      * Quick method for running a number of hardcoded settings through 
-     * runSpdBenchmark()
+     * runBenchmark(...)
+     */
+    public static void runBenchmark()
+    {
+        GraphGenSettings setting = new GraphGenSettings();
+        setting.BAGraph(60, 2, false, 4, 5, 20, false);
+        //setting.planlikeGraph(6, 40, 50, 2, 2, 4, 7, 20, true);
+        runBenchmark(setting,20000,false);
+        System.out.println(setting);
+    }
+    
+    /**
+     * Quick method for running a number of hardcoded settings through 
+     * runSpdBenchmark(...)
      */
     public static void runSpdBenchmark()
     {
